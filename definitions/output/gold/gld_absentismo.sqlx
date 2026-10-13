@@ -25,20 +25,33 @@ config {
   }
 }
 
+WITH aggregated AS (
+  SELECT
+    DATE_TRUNC(fecha_inicio, MONTH) AS mes_inicio,
+    departamento,
+    motivo_baja,
+    COUNT(1) AS total_episodios_baja,
+    COUNT(DISTINCT id_empleado) AS empleados_unicos_afectados,
+    SUM(dias_ausencia) AS total_dias_ausencia,
+    SUM(horas_ausencia) AS total_horas_ausencia
+  FROM
+    ${ref("slv_absentismo")}
+  GROUP BY
+    mes_inicio,
+    departamento,
+    motivo_baja
+)
+
 SELECT
-  ${helpers.surrogateKey(["DATE_TRUNC(fecha_inicio, MONTH)", "departamento", "motivo_baja"])} AS kpi_sk,
-  DATE_TRUNC(fecha_inicio, MONTH) AS mes_inicio,
+  ${helpers.surrogateKey(["mes_inicio", "departamento", "motivo_baja"])} AS kpi_sk,
+  mes_inicio,
   departamento,
   motivo_baja,
-  COUNT(1) AS total_episodios_baja,
-  COUNT(DISTINCT id_empleado) AS empleados_unicos_afectados,
-  SUM(dias_ausencia) AS total_dias_ausencia,
-  SUM(horas_ausencia) AS total_horas_ausencia,
+  total_episodios_baja,
+  empleados_unicos_afectados,
+  total_dias_ausencia,
+  total_horas_ausencia,
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
-  ${ref("slv_absentismo")}
-GROUP BY
-  mes_inicio,
-  departamento,
-  motivo_baja
+  aggregated

@@ -70,9 +70,10 @@ function driveUri(fileId, fileType = "CSV") {
 
 /**
  * Obtiene la lista de ficheros CSV asignados a un tag de negocio específico.
- * Si active_tag está definido y no coincide con targetTag, retorna lista vacía para no procesar datos cruzados.
+ * Soporta tanto `archivos_json` como `csv_files_json`.
+ * Si no se especifica active_tag, filtra automáticamente por el nombre del archivo.
  *
- * @param {string} targetTag - Tag de proceso esperado (ej: "prezero", "absentismo")
+ * @param {string} targetTag - Tag de proceso esperado (ej: "prezero", "absentismo", "medioambiente")
  * @returns {Array<{id: string, name: string}>} Lista de ficheros a compilar
  */
 function getFilesForTag(targetTag) {
@@ -80,14 +81,47 @@ function getFilesForTag(targetTag) {
   if (activeTag && activeTag !== targetTag) {
     return [];
   }
+
+  let fileList = [];
   try {
-    const raw = dataform.projectConfig.vars.csv_files_json || "[]";
-    const parsed = JSON.parse(raw);
+    const raw = dataform.projectConfig.vars.archivos_json ||
+                dataform.projectConfig.vars.csv_files_json ||
+                "[]";
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      fileList = parsed.map(item => {
+        if (typeof item === "string") {
+          return { id: item, name: item };
+        }
+        return {
+          id: item.id || item.fileId || item.id_fichero || item.file_id || "",
+          name: item.name || item.nombre || item.fileName || item.nombre_fichero || item.file_name || item.id || ""
+        };
+      }).filter(f => Boolean(f.id));
     }
   } catch (e) {
-    // Si falla el parseo, se evalúa si hay un único fichero en las variables individuales
+    // Si falla el parseo JSON
+  }
+
+  if (fileList.length > 0) {
+    const tagPatterns = {
+      prezero: /prezero|pre_zero/i,
+      absentismo: /absentismo|bajas_laborales|absenteeism/i,
+      medioambiente: /soluciones_medioambientales|medioambiente|medio_ambiente/i
+    };
+
+    const pattern = tagPatterns[targetTag] || new RegExp(targetTag, "i");
+    const matchedFiles = fileList.filter(f => pattern.test(f.name));
+
+    if (matchedFiles.length > 0) {
+      return matchedFiles;
+    }
+
+    if (activeTag && activeTag === targetTag) {
+      return fileList;
+    }
+
+    return [];
   }
 
   const driveFileId = dataform.projectConfig.vars.drive_file_id || "";
