@@ -1,0 +1,18 @@
+config {
+  type: "assertion",
+  schema: constants.SCHEMAS.ASSERTIONS,
+  tags: ["absentismo", "assertions"],
+  description: "Calidad Absentismo: Valida que los días u horas de ausencia no sean números negativos"
+}
+
+SELECT
+  absentismo_sk,
+  id_empleado,
+  dias_ausencia,
+  horas_ausencia,
+  _source_file_id
+FROM
+  ${ref("slv_absentismo")}
+WHERE
+  dias_ausencia < 0
+  OR horas_ausencia < 0

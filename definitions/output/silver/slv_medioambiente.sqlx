@@ -1,0 +1,70 @@
+config {
+  type: "table",
+  schema: constants.SCHEMAS.SILVER,
+  tags: ["medioambiente", "silver"],
+  description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, deduplicados y con clave subrogada",
+  columns: {
+    proyecto_sk: "Surrogate Key determinista SHA256 (id_proyecto)",
+    id_proyecto: "Identificador del proyecto medioambiental",
+    fecha_registro: "Fecha de registro del proyecto",
+    nombre_solucion: "Título o descripción de la solución",
+    categoria_solucion: "Categoría de la solución implementada",
+    pais: "País de ejecución del proyecto",
+    region_geografica: "Región geográfica del proyecto",
+    empresa_proveedora: "Empresa tecnológica o proveedora de la solución",
+    sector_cliente: "Sector económico del cliente final",
+    coste_implementacion_eur: "Coste de implantación en Euros",
+    ahorro_anual_estimado_eur: "Ahorro anual proyectado en Euros",
+    reduccion_co2_ton_ano: "Toneladas de CO2 reducidas anualmente",
+    volumen_agua_reciclada_m3: "Metros cúbicos de agua reciclada",
+    energia_renovable_generada_mwh: "Megavatios hora generados de origen renovable",
+    residuos_desviados_vertedero_ton: "Toneladas de residuos desviados de vertedero",
+    estado_proyecto: "Estado del proyecto",
+    certificacion_ambiental: "Estándar o certificación ambiental",
+    huella_carbono_inicial_ton: "Huella de carbono previa en toneladas",
+    roi_estimado_anos: "Plazo estimado de recuperación de la inversión (años)",
+    subvencion_publica_porc: "Porcentaje de subvención pública sobre el coste",
+    indice_impacto_ambiental_1_10: "Índice de impacto ambiental (escala 1 a 10)",
+    _source_file_id: docs.columns._source_file_id,
+    _source_file_name: docs.columns._source_file_name,
+    _dw_loaded_at: docs.columns._dw_loaded_at,
+    _dw_loaded_by: docs.columns._dw_loaded_by
+  },
+  assertions: {
+    uniqueKey: ["proyecto_sk"],
+    nonNull: ["proyecto_sk", "id_proyecto"]
+  }
+}
+
+SELECT
+  ${helpers.surrogateKey(["id_proyecto"])} AS proyecto_sk,
+  id_proyecto,
+  fecha_registro,
+  nombre_solucion,
+  categoria_solucion,
+  pais,
+  region_geografica,
+  empresa_proveedora,
+  sector_cliente,
+  COALESCE(coste_implementacion_eur, 0) AS coste_implementacion_eur,
+  COALESCE(ahorro_anual_estimado_eur, 0) AS ahorro_anual_estimado_eur,
+  COALESCE(reduccion_co2_ton_ano, 0) AS reduccion_co2_ton_ano,
+  COALESCE(volumen_agua_reciclada_m3, 0) AS volumen_agua_reciclada_m3,
+  COALESCE(energia_renovable_generada_mwh, 0) AS energia_renovable_generada_mwh,
+  COALESCE(residuos_desviados_vertedero_ton, 0) AS residuos_desviados_vertedero_ton,
+  estado_proyecto,
+  certificacion_ambiental,
+  huella_carbono_inicial_ton,
+  roi_estimado_anos,
+  subvencion_publica_porc,
+  indice_impacto_ambiental_1_10,
+  _source_file_id,
+  _source_file_name,
+  CURRENT_TIMESTAMP() AS _dw_loaded_at,
+  SESSION_USER() AS _dw_loaded_by
+FROM
+  ${ref("brz_medioambiente")}
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY id_proyecto
+  ORDER BY fecha_registro DESC, _dw_loaded_at DESC
+) = 1

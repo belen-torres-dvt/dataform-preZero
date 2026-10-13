@@ -1,0 +1,44 @@
+config {
+  type: "table",
+  schema: constants.SCHEMAS.GOLD,
+  tags: ["absentismo", "gold", "bi"],
+  description: "Capa Gold: Resumen mensual de absentismo laboral, jornadas perdidas y causas por departamento",
+  bigquery: {
+    partitionBy: "mes_inicio",
+    clusterBy: ["departamento", "motivo_baja"]
+  },
+  columns: {
+    kpi_sk: "Surrogate key unívoca para la granularidad mes-departamento-motivo",
+    mes_inicio: "Primer día del mes analizado",
+    departamento: "Departamento de la empresa",
+    motivo_baja: "Causa o motivo de la ausencia laboral",
+    total_episodios_baja: "Número total de partes o incidencias de baja registradas",
+    empleados_unicos_afectados: "Número de empleados distintos que sufrieron alguna baja en el mes",
+    total_dias_ausencia: "Total acumulado de días de ausencia laboral en el mes",
+    total_horas_ausencia: "Total acumulado de horas de ausencia laboral",
+    _dw_loaded_at: docs.columns._dw_loaded_at,
+    _dw_loaded_by: docs.columns._dw_loaded_by
+  },
+  assertions: {
+    uniqueKey: ["kpi_sk"],
+    nonNull: ["kpi_sk", "mes_inicio", "departamento"]
+  }
+}
+
+SELECT
+  ${helpers.surrogateKey(["DATE_TRUNC(fecha_inicio, MONTH)", "departamento", "motivo_baja"])} AS kpi_sk,
+  DATE_TRUNC(fecha_inicio, MONTH) AS mes_inicio,
+  departamento,
+  motivo_baja,
+  COUNT(1) AS total_episodios_baja,
+  COUNT(DISTINCT id_empleado) AS empleados_unicos_afectados,
+  SUM(dias_ausencia) AS total_dias_ausencia,
+  SUM(horas_ausencia) AS total_horas_ausencia,
+  CURRENT_TIMESTAMP() AS _dw_loaded_at,
+  SESSION_USER() AS _dw_loaded_by
+FROM
+  ${ref("slv_absentismo")}
+GROUP BY
+  mes_inicio,
+  departamento,
+  motivo_baja

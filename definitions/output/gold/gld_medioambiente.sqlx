@@ -1,0 +1,57 @@
+config {
+  type: "table",
+  schema: constants.SCHEMAS.GOLD,
+  tags: ["medioambiente", "gold", "bi"],
+  description: "Capa Gold: Resumen mensual analítico de impacto ambiental, inversiones y ahorros por categoría, país y sector",
+  bigquery: {
+    partitionBy: "mes_registro",
+    clusterBy: ["categoria_solucion", "pais"]
+  },
+  columns: {
+    kpi_sk: "Surrogate key unívoca para la granularidad mes-categoría-país-sector",
+    mes_registro: "Primer día del mes de registro del proyecto",
+    categoria_solucion: "Categoría de la solución implementada",
+    pais: "País donde se ejecutó el proyecto",
+    sector_cliente: "Sector industrial o de negocio del cliente",
+    total_proyectos: "Número total de proyectos medioambientales registrados",
+    total_coste_eur: "Suma acumulada del coste de implementación en Euros",
+    total_ahorro_anual_eur: "Suma del ahorro anual proyectado en Euros",
+    total_reduccion_co2_ton: "Suma acumulada de toneladas de CO2 reducidas anualmente",
+    total_agua_reciclada_m3: "Total acumulado de metros cúbicos de agua reciclada",
+    total_energia_renovable_mwh: "Total de megavatios-hora generados de origen renovable",
+    total_residuos_desviados_ton: "Toneladas acumuladas de residuos desviados de vertedero",
+    avg_indice_impacto_ambiental: "Puntuación media del índice de impacto ambiental (1 a 10)",
+    avg_roi_anos: "Plazo medio estimado de retorno de inversión (en años)",
+    _dw_loaded_at: docs.columns._dw_loaded_at,
+    _dw_loaded_by: docs.columns._dw_loaded_by
+  },
+  assertions: {
+    uniqueKey: ["kpi_sk"],
+    nonNull: ["kpi_sk", "mes_registro", "categoria_solucion"]
+  }
+}
+
+SELECT
+  ${helpers.surrogateKey(["DATE_TRUNC(fecha_registro, MONTH)", "categoria_solucion", "pais", "sector_cliente"])} AS kpi_sk,
+  DATE_TRUNC(fecha_registro, MONTH) AS mes_registro,
+  categoria_solucion,
+  pais,
+  sector_cliente,
+  COUNT(1) AS total_proyectos,
+  ROUND(SUM(coste_implementacion_eur), 2) AS total_coste_eur,
+  ROUND(SUM(ahorro_anual_estimado_eur), 2) AS total_ahorro_anual_eur,
+  ROUND(SUM(reduccion_co2_ton_ano), 2) AS total_reduccion_co2_ton,
+  ROUND(SUM(volumen_agua_reciclada_m3), 2) AS total_agua_reciclada_m3,
+  ROUND(SUM(energia_renovable_generada_mwh), 2) AS total_energia_renovable_mwh,
+  ROUND(SUM(residuos_desviados_vertedero_ton), 2) AS total_residuos_desviados_ton,
+  ROUND(AVG(indice_impacto_ambiental_1_10), 2) AS avg_indice_impacto_ambiental,
+  ROUND(AVG(roi_estimado_anos), 2) AS avg_roi_anos,
+  CURRENT_TIMESTAMP() AS _dw_loaded_at,
+  SESSION_USER() AS _dw_loaded_by
+FROM
+  ${ref("slv_medioambiente")}
+GROUP BY
+  mes_registro,
+  categoria_solucion,
+  pais,
+  sector_cliente

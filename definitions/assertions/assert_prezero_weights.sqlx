@@ -1,0 +1,16 @@
+config {
+  type: "assertion",
+  schema: constants.SCHEMAS.ASSERTIONS,
+  tags: ["prezero", "assertions"],
+  description: "Calidad PreZero: Comprueba que ningún pesaje contenga pesos netos negativos"
+}
+
+SELECT
+  prezero_sk,
+  id_registro,
+  peso_neto_kg,
+  _source_file_id
+FROM
+  ${ref("slv_prezero")}
+WHERE
+  peso_neto_kg < 0

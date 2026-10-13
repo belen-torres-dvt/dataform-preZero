@@ -1,0 +1,24 @@
+# Configuración principal de Dataform (Dataform Core 3.0+)
+# Proyecto único: belen-torres-sandbox1
+defaultProject: "belen-torres-sandbox1"
+defaultDataset: "bq_stg_euw1"
+defaultLocation: "europe-west1"
+defaultAssertionDataset: "bq_assertions_euw1"
+dataformCoreVersion: "3.0.0"
+
+vars:
+  # Parámetros dinámicos inyectados vía Apps Script o Dataform API
+  drive_folder_id: "1Wc7Nc1EOnzZP0ZNXyTFwWCAYrG4E77i8"
+  active_tag: "" # Tag seleccionado por Apps Script (ej: "prezero", "absentismo")
+  csv_files_json: "[]" # Lista serializada JSON con [{id: "...", name: "..."}]
+  drive_file_id: "default_file_id_placeholder"
+  drive_file_name: "drive_raw_input"
+  drive_file_type: "CSV"
+  sheet_skip_leading_rows: "1"
+
+  # Nombres de datasets según entorno Sandbox
+  raw_dataset: "bq_stg_euw1"
+  bronze_dataset: "bq_bronze_euw1"
+  silver_dataset: "bq_silver_euw1"
+  gold_dataset: "bq_gold_euw1"
+  assertions_dataset: "bq_assertions_euw1"

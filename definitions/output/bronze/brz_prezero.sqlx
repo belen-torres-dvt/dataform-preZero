@@ -1,0 +1,31 @@
+config {
+  type: "view",
+  schema: constants.SCHEMAS.BRONZE,
+  tags: ["prezero", "bronze"],
+  description: "Capa Bronze: Tipado inicial y saneamiento de registros de pesajes y operaciones PreZero",
+  columns: {
+    id_registro: "Identificador del registro de pesaje u operación",
+    centro_operativo: "Nombre o código de la planta / centro operativo",
+    tipo_residuo: "Fracción o tipología de material / residuo",
+    peso_neto_kg: "Peso neto en kilogramos registrado en báscula",
+    fecha_operacion: "Fecha de la operación de pesaje",
+    fecha_hora_pesaje: "Timestamp exacto del evento de pesaje",
+    _source_file_id: docs.columns._source_file_id,
+    _source_file_name: docs.columns._source_file_name,
+    _dw_loaded_at: docs.columns._dw_loaded_at,
+    _dw_loaded_by: docs.columns._dw_loaded_by
+  }
+}
+
+SELECT
+  ${helpers.cleanString("id_registro")} AS id_registro,
+  UPPER(COALESCE(${helpers.cleanString("centro_operativo")}, "CENTRO_GENERAL")) AS centro_operativo,
+  UPPER(COALESCE(${helpers.cleanString("tipo_residuo")}, "GENERAL")) AS tipo_residuo,
+  SAFE_CAST(peso_neto_kg AS NUMERIC) AS peso_neto_kg,
+  COALESCE(SAFE_CAST(fecha_operacion AS DATE), CURRENT_DATE()) AS fecha_operacion,
+  SAFE_CAST(fecha_hora_pesaje AS TIMESTAMP) AS fecha_hora_pesaje,
+  ${helpers.auditColumns(true)}
+FROM
+  ${ref("drive_source_prezero")}
+WHERE
+  ${helpers.cleanString("id_registro")} IS NOT NULL

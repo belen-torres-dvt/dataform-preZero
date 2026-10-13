@@ -1,0 +1,42 @@
+config {
+  type: "table",
+  schema: constants.SCHEMAS.SILVER,
+  tags: ["prezero", "silver"],
+  description: "Capa Silver: Registros de PreZero limpios, deduplicados y con surrogate key determinista",
+  columns: {
+    prezero_sk: "Surrogate Key determinista SHA256 (id_registro + fecha_operacion)",
+    id_registro: "Identificador del registro de pesaje",
+    centro_operativo: "Centro o planta operativa estandarizada",
+    tipo_residuo: "Tipología de material estandarizada",
+    peso_neto_kg: "Peso neto en kilogramos verificado",
+    fecha_operacion: "Fecha de la operación",
+    fecha_hora_pesaje: "Timestamp del pesaje",
+    _source_file_id: docs.columns._source_file_id,
+    _source_file_name: docs.columns._source_file_name,
+    _dw_loaded_at: docs.columns._dw_loaded_at,
+    _dw_loaded_by: docs.columns._dw_loaded_by
+  },
+  assertions: {
+    uniqueKey: ["prezero_sk"],
+    nonNull: ["prezero_sk", "id_registro"]
+  }
+}
+
+SELECT
+  ${helpers.surrogateKey(["id_registro", "fecha_operacion"])} AS prezero_sk,
+  id_registro,
+  centro_operativo,
+  tipo_residuo,
+  COALESCE(peso_neto_kg, 0) AS peso_neto_kg,
+  fecha_operacion,
+  fecha_hora_pesaje,
+  _source_file_id,
+  _source_file_name,
+  CURRENT_TIMESTAMP() AS _dw_loaded_at,
+  SESSION_USER() AS _dw_loaded_by
+FROM
+  ${ref("brz_prezero")}
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY id_registro, fecha_operacion 
+  ORDER BY fecha_hora_pesaje DESC, _dw_loaded_at DESC
+) = 1

@@ -1,0 +1,45 @@
+config {
+  type: "operations",
+  hasOutput: true,
+  schema: constants.SCHEMAS.RAW,
+  name: "drive_source_absentismo",
+  tags: ["absentismo", "source"],
+  description: "Crea tablas externas BigQuery para los CSVs de Absentismo y las unifica en una vista única"
+}
+
+js {
+  const files = helpers.getFilesForTag("absentismo");
+}
+
+-- Crear una tabla externa en bq_stg_euw1 para cada fichero CSV que coincide con 'absentismo'
+${files.map((file, idx) => `
+  CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_absentismo_${idx}\`
+  OPTIONS (
+    format = "CSV",
+    uris = ["https://drive.google.com/open?id=${file.id}"],
+    autodetect = TRUE,
+    skip_leading_rows = 1
+  );
+`).join("\n")}
+
+-- Vista unificada de los CSVs de Absentismo con trazabilidad del fichero de origen
+CREATE OR REPLACE VIEW ${self()} AS
+${files.length > 0 ? files.map((file, idx) => `
+  SELECT
+    *,
+    '${file.id}' AS _source_file_id,
+    '${file.name}' AS _source_file_name
+  FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_absentismo_${idx}\`
+`).join("\nUNION ALL\n") : `
+  SELECT
+    CAST(NULL AS STRING) AS id_empleado,
+    CAST(NULL AS STRING) AS departamento,
+    CAST(NULL AS STRING) AS motivo_baja,
+    CAST(NULL AS NUMERIC) AS dias_ausencia,
+    CAST(NULL AS NUMERIC) AS horas_ausencia,
+    CAST(NULL AS DATE) AS fecha_inicio,
+    CAST(NULL AS DATE) AS fecha_fin,
+    'placeholder_id' AS _source_file_id,
+    'placeholder_name' AS _source_file_name
+  WHERE FALSE
+`};

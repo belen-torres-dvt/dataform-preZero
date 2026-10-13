@@ -1,0 +1,44 @@
+config {
+  type: "table",
+  schema: constants.SCHEMAS.GOLD,
+  tags: ["prezero", "gold", "bi"],
+  description: "Capa Gold: Resumen analítico diario de pesajes y material por centro operativo PreZero",
+  bigquery: {
+    partitionBy: "fecha_operacion",
+    clusterBy: ["centro_operativo", "tipo_residuo"]
+  },
+  columns: {
+    kpi_sk: "Surrogate key unívoca para la granularidad fecha-centro-residuo",
+    fecha_operacion: "Fecha de la operación",
+    centro_operativo: "Centro o instalación operativa",
+    tipo_residuo: "Fracción de residuo o material",
+    total_pesajes: "Número total de pesajes realizados",
+    total_peso_neto_kg: "Suma total acumulada de peso neto en kilogramos",
+    total_peso_toneladas: "Suma total acumulada convertida a toneladas métricas",
+    avg_peso_neto_kg: "Peso promedio por pesaje",
+    _dw_loaded_at: docs.columns._dw_loaded_at,
+    _dw_loaded_by: docs.columns._dw_loaded_by
+  },
+  assertions: {
+    uniqueKey: ["kpi_sk"],
+    nonNull: ["kpi_sk", "fecha_operacion", "centro_operativo"]
+  }
+}
+
+SELECT
+  ${helpers.surrogateKey(["fecha_operacion", "centro_operativo", "tipo_residuo"])} AS kpi_sk,
+  fecha_operacion,
+  centro_operativo,
+  tipo_residuo,
+  COUNT(1) AS total_pesajes,
+  ROUND(SUM(peso_neto_kg), 2) AS total_peso_neto_kg,
+  ROUND(SUM(peso_neto_kg) / 1000.0, 3) AS total_peso_toneladas,
+  ROUND(AVG(peso_neto_kg), 2) AS avg_peso_neto_kg,
+  CURRENT_TIMESTAMP() AS _dw_loaded_at,
+  SESSION_USER() AS _dw_loaded_by
+FROM
+  ${ref("slv_prezero")}
+GROUP BY
+  fecha_operacion,
+  centro_operativo,
+  tipo_residuo
