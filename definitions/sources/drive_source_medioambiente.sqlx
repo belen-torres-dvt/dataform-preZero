@@ -53,5 +53,6 @@ ${files.length > 0 ? files.map((file, idx) => `
     CAST(NULL AS NUMERIC) AS indice_impacto_ambiental_1_10,
     'placeholder_id' AS _source_file_id,
     'placeholder_name' AS _source_file_name
+  FROM (SELECT 1)
   WHERE FALSE
 `};

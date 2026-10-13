@@ -40,5 +40,6 @@ ${files.length > 0 ? files.map((file, idx) => `
     CAST(NULL AS DATE) AS fecha_fin,
     'placeholder_id' AS _source_file_id,
     'placeholder_name' AS _source_file_name
+  FROM (SELECT 1)
   WHERE FALSE
 `};
