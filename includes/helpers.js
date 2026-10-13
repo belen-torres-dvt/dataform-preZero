@@ -90,10 +90,10 @@ function getFilesForTag(targetTag) {
     // Si falla el parseo, se evalúa si hay un único fichero en las variables individuales
   }
 
-  // Fallback si se envió un único archivo para este tag o como prueba
-  if (dataform.projectConfig.vars.drive_file_id && (!activeTag || activeTag === targetTag)) {
+  const driveFileId = dataform.projectConfig.vars.drive_file_id || "";
+  if (driveFileId && driveFileId !== "default_file_id_placeholder" && (!activeTag || activeTag === targetTag)) {
     return [{
-      id: dataform.projectConfig.vars.drive_file_id,
+      id: driveFileId,
       name: dataform.projectConfig.vars.drive_file_name || `${targetTag}_sample.csv`
     }];
   }

@@ -11,8 +11,8 @@ vars:
   drive_folder_id: "1Wc7Nc1EOnzZP0ZNXyTFwWCAYrG4E77i8"
   active_tag: "" # Tag seleccionado por Apps Script (ej: "prezero", "absentismo")
   csv_files_json: "[]" # Lista serializada JSON con [{id: "...", name: "..."}]
-  drive_file_id: "default_file_id_placeholder"
-  drive_file_name: "drive_raw_input"
+  drive_file_id: ""
+  drive_file_name: ""
   drive_file_type: "CSV"
   sheet_skip_leading_rows: "1"
 

@@ -98,17 +98,8 @@ function processDriveFolder() {
       continue;
     }
 
-    Logger.log(`=== Iniciando pipeline para Tag [${tag}] con ${fileList.length} fichero(s) ===`);
-
     try {
-      // 1. Crear compilación con variables específicas para este tag y sus ficheros
-      const compilationResultName = createCompilation(tag, fileList);
-      Logger.log(`[${tag}] Compilación creada: ${compilationResultName}`);
-
-      // 2. Invocar Dataform filtrando por el tag del proceso
-      const invocationName = executeWorkflowForTag(compilationResultName, tag);
-      Logger.log(`[${tag}] Invocación iniciada exitosamente: ${invocationName}`);
-
+      triggerProcessForTag(tag, fileList);
     } catch (err) {
       Logger.log(`[${tag}] ERROR al ejecutar Dataform: ${err.toString()}`);
     }
@@ -117,6 +108,36 @@ function processDriveFolder() {
   if (unmappedFiles.length > 0) {
     Logger.log(`Archivos no procesados por falta de regla de mapeo: ${unmappedFiles.join(", ")}`);
   }
+}
+
+/**
+ * Dispara el pipeline para un Tag y lista de ficheros dados como parámetro de entrada.
+ * Permite invocar Dataform directamente cuando el tag y los ficheros ya se conocen de antemano.
+ * 
+ * @param {string} tag - Tag de negocio (ej: "prezero", "absentismo", "medioambiente")
+ * @param {Array<{id: string, name: string}>} fileList - Lista de ficheros con id y nombre
+ * @returns {string} ID de la invocación creada en Dataform
+ */
+function triggerProcessForTag(tag, fileList) {
+  if (!tag) {
+    throw new Error("El parámetro 'tag' es obligatorio");
+  }
+  if (!fileList || fileList.length === 0) {
+    Logger.log(`[${tag}] No se proporcionaron ficheros. Omitiendo.`);
+    return null;
+  }
+
+  Logger.log(`=== Iniciando pipeline para Tag [${tag}] con ${fileList.length} fichero(s) ===`);
+
+  // 1. Crear compilación con variables específicas para este tag y sus ficheros
+  const compilationResultName = createCompilation(tag, fileList);
+  Logger.log(`[${tag}] Compilación creada: ${compilationResultName}`);
+
+  // 2. Invocar Dataform filtrando por el tag del proceso
+  const invocationName = executeWorkflowForTag(compilationResultName, tag);
+  Logger.log(`[${tag}] Invocación iniciada exitosamente: ${invocationName}`);
+
+  return invocationName;
 }
 
 /**

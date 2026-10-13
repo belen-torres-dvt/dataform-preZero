@@ -17,7 +17,6 @@ ${files.map((file, idx) => `
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],
-    autodetect = TRUE,
     skip_leading_rows = 1
   );
 `).join("\n")}
