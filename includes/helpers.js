@@ -142,10 +142,37 @@ function getFilesForTag(targetTag) {
   return [];
 }
 
+/**
+ * Devuelve la lista formateada en SQL ('file1.csv', 'file2.csv') de nombres de archivos para un tag.
+ * Si no hay archivos, devuelve "''".
+ *
+ * @param {string} targetTag - Tag de proceso esperado
+ * @returns {string} Fragmento SQL de nombres de archivo entre comillas simples
+ */
+function getFileNamesSqlList(targetTag) {
+  const files = getFilesForTag(targetTag);
+  if (!files || files.length === 0) {
+    return "''";
+  }
+  return files.map(f => `'${f.name.replace(/'/g, "\\'")}'`).join(", ");
+}
+
+/**
+ * Indica si hay archivos asignados al tag dado.
+ *
+ * @param {string} targetTag
+ * @returns {boolean}
+ */
+function hasFilesForTag(targetTag) {
+  return getFilesForTag(targetTag).length > 0;
+}
+
 module.exports = {
   surrogateKey,
   auditColumns,
   cleanString,
   driveUri,
-  getFilesForTag
+  getFilesForTag,
+  getFileNamesSqlList,
+  hasFilesForTag
 };

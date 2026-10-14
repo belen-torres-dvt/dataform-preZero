@@ -28,14 +28,9 @@ config {
   }
 }
 
-js {
-  const files = helpers.getFilesForTag("absentismo");
-  const fileNamesList = files.map(f => `'${f.name.replace(/'/g, "\\'")}'`).join(", ");
-}
-
 pre_operations {
-  ${when(incremental() && files.length > 0,
-    `DELETE FROM ${self()} WHERE file_name IN (${fileNamesList})`,
+  ${when(incremental() && helpers.hasFilesForTag("absentismo"),
+    `DELETE FROM ${self()} WHERE file_name IN (${helpers.getFileNamesSqlList("absentismo")})`,
     `SELECT 1`
   )}
 }
@@ -57,7 +52,7 @@ SELECT
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_absentismo")}
-${when(incremental() && files.length === 0, `WHERE FALSE`)}
+${when(incremental() && !helpers.hasFilesForTag("absentismo"), `WHERE FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_empleado, fecha_inicio, motivo_baja 
   ORDER BY _dw_loaded_at DESC

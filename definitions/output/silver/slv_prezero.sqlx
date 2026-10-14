@@ -27,14 +27,9 @@ config {
   }
 }
 
-js {
-  const files = helpers.getFilesForTag("prezero");
-  const fileNamesList = files.map(f => `'${f.name.replace(/'/g, "\\'")}'`).join(", ");
-}
-
 pre_operations {
-  ${when(incremental() && files.length > 0,
-    `DELETE FROM ${self()} WHERE file_name IN (${fileNamesList})`,
+  ${when(incremental() && helpers.hasFilesForTag("prezero"),
+    `DELETE FROM ${self()} WHERE file_name IN (${helpers.getFileNamesSqlList("prezero")})`,
     `SELECT 1`
   )}
 }
@@ -55,7 +50,7 @@ SELECT
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_prezero")}
-${when(incremental() && files.length === 0, `WHERE FALSE`)}
+${when(incremental() && !helpers.hasFilesForTag("prezero"), `WHERE FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_registro, fecha_operacion 
   ORDER BY fecha_hora_pesaje DESC, _dw_loaded_at DESC
