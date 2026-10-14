@@ -36,12 +36,54 @@ config {
   }
 }
 
+js {
+  const files = helpers.getFilesForTag("medioambiente");
+
+  function selectFromExternal(tableRef, file) {
+    const fId = file ? file.id : "";
+    const fName = file ? file.name : "";
+    return `
+      SELECT
+        ${helpers.cleanString("id_proyecto")} AS id_proyecto,
+        SAFE_CAST(fecha_registro AS DATE) AS fecha_registro,
+        ${helpers.cleanString("nombre_solucion")} AS nombre_solucion,
+        UPPER(${helpers.cleanString("categoria_solucion")}) AS categoria_solucion,
+        ${helpers.cleanString("pais")} AS pais,
+        ${helpers.cleanString("region_geografica")} AS region_geografica,
+        ${helpers.cleanString("empresa_proveedora")} AS empresa_proveedora,
+        ${helpers.cleanString("sector_cliente")} AS sector_cliente,
+        SAFE_CAST(coste_implementacion_eur AS NUMERIC) AS coste_implementacion_eur,
+        SAFE_CAST(ahorro_anual_estimado_eur AS NUMERIC) AS ahorro_anual_estimado_eur,
+        SAFE_CAST(reduccion_co2_ton_ano AS NUMERIC) AS reduccion_co2_ton_ano,
+        SAFE_CAST(volumen_agua_reciclada_m3 AS NUMERIC) AS volumen_agua_reciclada_m3,
+        SAFE_CAST(energia_renovable_generada_mwh AS NUMERIC) AS energia_renovable_generada_mwh,
+        SAFE_CAST(residuos_desviados_vertedero_ton AS NUMERIC) AS residuos_desviados_vertedero_ton,
+        UPPER(${helpers.cleanString("estado_proyecto")}) AS estado_proyecto,
+        ${helpers.cleanString("certificacion_ambiental")} AS certificacion_ambiental,
+        SAFE_CAST(huella_carbono_inicial_ton AS NUMERIC) AS huella_carbono_inicial_ton,
+        SAFE_CAST(roi_estimado_anos AS NUMERIC) AS roi_estimado_anos,
+        SAFE_CAST(subvencion_publica_porc AS NUMERIC) AS subvencion_publica_porc,
+        SAFE_CAST(indice_impacto_ambiental_1_10 AS NUMERIC) AS indice_impacto_ambiental_1_10,
+        '${fId}' AS file_id,
+        '${fName}' AS file_name,
+        '${fId}' AS _source_file_id,
+        '${fName}' AS _source_file_name,
+        CURRENT_TIMESTAMP() AS _dw_loaded_at,
+        SESSION_USER() AS _dw_loaded_by
+      FROM
+        ${tableRef}
+      WHERE
+        ${helpers.cleanString("id_proyecto")} IS NOT NULL
+    `;
+  }
+}
+
 pre_operations {
   BEGIN
     DECLARE obj_type STRING;
     SET obj_type = (
       SELECT table_type 
-      FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES\`
+      FROM ${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES
       WHERE table_name = '${self().name}'
     );
     IF obj_type = 'VIEW' THEN
@@ -52,29 +94,9 @@ pre_operations {
   END;
 }
 
-SELECT
-  ${helpers.cleanString("id_proyecto")} AS id_proyecto,
-  SAFE_CAST(fecha_registro AS DATE) AS fecha_registro,
-  ${helpers.cleanString("nombre_solucion")} AS nombre_solucion,
-  UPPER(${helpers.cleanString("categoria_solucion")}) AS categoria_solucion,
-  ${helpers.cleanString("pais")} AS pais,
-  ${helpers.cleanString("region_geografica")} AS region_geografica,
-  ${helpers.cleanString("empresa_proveedora")} AS empresa_proveedora,
-  ${helpers.cleanString("sector_cliente")} AS sector_cliente,
-  SAFE_CAST(coste_implementacion_eur AS NUMERIC) AS coste_implementacion_eur,
-  SAFE_CAST(ahorro_anual_estimado_eur AS NUMERIC) AS ahorro_anual_estimado_eur,
-  SAFE_CAST(reduccion_co2_ton_ano AS NUMERIC) AS reduccion_co2_ton_ano,
-  SAFE_CAST(volumen_agua_reciclada_m3 AS NUMERIC) AS volumen_agua_reciclada_m3,
-  SAFE_CAST(energia_renovable_generada_mwh AS NUMERIC) AS energia_renovable_generada_mwh,
-  SAFE_CAST(residuos_desviados_vertedero_ton AS NUMERIC) AS residuos_desviados_vertedero_ton,
-  UPPER(${helpers.cleanString("estado_proyecto")}) AS estado_proyecto,
-  ${helpers.cleanString("certificacion_ambiental")} AS certificacion_ambiental,
-  SAFE_CAST(huella_carbono_inicial_ton AS NUMERIC) AS huella_carbono_inicial_ton,
-  SAFE_CAST(roi_estimado_anos AS NUMERIC) AS roi_estimado_anos,
-  SAFE_CAST(subvencion_publica_porc AS NUMERIC) AS subvencion_publica_porc,
-  SAFE_CAST(indice_impacto_ambiental_1_10 AS NUMERIC) AS indice_impacto_ambiental_1_10,
-  ${helpers.auditColumns(true)}
-FROM
-  ${ref("drive_source_medioambiente")}
-WHERE
-  ${helpers.cleanString("id_proyecto")} IS NOT NULL
+${files.length <= 1 ? selectFromExternal(ref("drive_source_medioambiente"), files[0]) :
+  files.map((file, idx) => selectFromExternal(
+    idx === 0 ? ref("drive_source_medioambiente") : `${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}`,
+    file
+  )).join("\nUNION ALL\n")
+}

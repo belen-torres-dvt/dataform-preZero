@@ -4,61 +4,37 @@ config {
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_prezero",
   tags: ["prezero", "source"],
-  description: "Crea tablas externas BigQuery para los CSVs de PreZero en bq_drive_euw1 y expone la vista consolidada"
+  description: "Tabla externa BigQuery en bq_drive_euw1 apuntando a los datos de PreZero en Google Drive"
 }
 
 js {
   const files = helpers.getFilesForTag("prezero");
 }
 
--- 1. Crear tablas externas en bq_drive_euw1 para cada fichero CSV que coincide con 'prezero'
-${files.map((file, idx) => `
-  CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_prezero_${idx}\`
+-- 1. Si existía una vista previa con este nombre, eliminarla para permitir crear la TABLA EXTERNA sin conflictos de tipo
+BEGIN
+  DECLARE obj_type STRING;
+  SET obj_type = (
+    SELECT table_type 
+    FROM ${constants.SCHEMAS.RAW}.INFORMATION_SCHEMA.TABLES
+    WHERE table_name = '${self().name}'
+  );
+  IF obj_type = 'VIEW' THEN
+    DROP VIEW IF EXISTS ${self()};
+  END IF;
+EXCEPTION WHEN ERROR THEN
+  NULL;
+END;
+
+-- 2. Crear directamente la tabla externa en bq_drive_euw1 (sin vistas intermedias)
+${files.length > 0 ? files.map((file, idx) => `
+  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `${constants.SCHEMAS.RAW}.ext_prezero_${idx}`}
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],
     skip_leading_rows = 1,
     autodetect = TRUE
   );
-`).join("\n")}
-
--- 2. Eliminar la tabla base previa si existía como TABLE para permitir crear la VIEW sin conflictos de tipo
-BEGIN
-  DECLARE obj_type STRING;
-  SET obj_type = (
-    SELECT table_type 
-    FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.INFORMATION_SCHEMA.TABLES\`
-    WHERE table_name = '${self().name}'
-  );
-  IF obj_type = 'BASE TABLE' THEN
-    DROP TABLE IF EXISTS ${self()};
-  END IF;
-EXCEPTION WHEN ERROR THEN
-  NULL;
-END;
-
--- 3. Vista unificada en el dataset de Drive que expone las tablas externas con metadatos de fichero
-CREATE OR REPLACE VIEW ${self()} AS
-${files.length > 0 ? files.map((file, idx) => `
-  SELECT
-    *,
-    '${file.id}' AS file_id,
-    '${file.name}' AS file_name,
-    '${file.id}' AS _source_file_id,
-    '${file.name}' AS _source_file_name
-  FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_prezero_${idx}\`
-`).join("\nUNION ALL\n") : `
-  SELECT
-    CAST(NULL AS STRING) AS id_registro,
-    CAST(NULL AS STRING) AS centro_operativo,
-    CAST(NULL AS STRING) AS tipo_residuo,
-    CAST(NULL AS STRING) AS peso_neto_kg,
-    CAST(NULL AS STRING) AS fecha_operacion,
-    CAST(NULL AS STRING) AS fecha_hora_pesaje,
-    'placeholder_id' AS file_id,
-    'placeholder_name' AS file_name,
-    'placeholder_id' AS _source_file_id,
-    'placeholder_name' AS _source_file_name
-  FROM (SELECT 1)
-  WHERE FALSE
-`};
+`).join("\n") : `
+  SELECT 1;
+`}

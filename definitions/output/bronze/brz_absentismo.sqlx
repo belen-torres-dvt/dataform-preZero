@@ -23,12 +23,41 @@ config {
   }
 }
 
+js {
+  const files = helpers.getFilesForTag("absentismo");
+
+  function selectFromExternal(tableRef, file) {
+    const fId = file ? file.id : "";
+    const fName = file ? file.name : "";
+    return `
+      SELECT
+        ${helpers.cleanString("id_empleado")} AS id_empleado,
+        UPPER(COALESCE(${helpers.cleanString("departamento")}, "NO_ASIGNADO")) AS departamento,
+        UPPER(COALESCE(${helpers.cleanString("motivo_baja")}, "NO_ESPECIFICADO")) AS motivo_baja,
+        SAFE_CAST(dias_ausencia AS NUMERIC) AS dias_ausencia,
+        SAFE_CAST(horas_ausencia AS NUMERIC) AS horas_ausencia,
+        SAFE_CAST(fecha_inicio AS DATE) AS fecha_inicio,
+        SAFE_CAST(fecha_fin AS DATE) AS fecha_fin,
+        '${fId}' AS file_id,
+        '${fName}' AS file_name,
+        '${fId}' AS _source_file_id,
+        '${fName}' AS _source_file_name,
+        CURRENT_TIMESTAMP() AS _dw_loaded_at,
+        SESSION_USER() AS _dw_loaded_by
+      FROM
+        ${tableRef}
+      WHERE
+        ${helpers.cleanString("id_empleado")} IS NOT NULL
+    `;
+  }
+}
+
 pre_operations {
   BEGIN
     DECLARE obj_type STRING;
     SET obj_type = (
       SELECT table_type 
-      FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES\`
+      FROM ${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES
       WHERE table_name = '${self().name}'
     );
     IF obj_type = 'VIEW' THEN
@@ -39,16 +68,9 @@ pre_operations {
   END;
 }
 
-SELECT
-  ${helpers.cleanString("id_empleado")} AS id_empleado,
-  UPPER(COALESCE(${helpers.cleanString("departamento")}, "NO_ASIGNADO")) AS departamento,
-  UPPER(COALESCE(${helpers.cleanString("motivo_baja")}, "NO_ESPECIFICADO")) AS motivo_baja,
-  SAFE_CAST(dias_ausencia AS NUMERIC) AS dias_ausencia,
-  SAFE_CAST(horas_ausencia AS NUMERIC) AS horas_ausencia,
-  SAFE_CAST(fecha_inicio AS DATE) AS fecha_inicio,
-  SAFE_CAST(fecha_fin AS DATE) AS fecha_fin,
-  ${helpers.auditColumns(true)}
-FROM
-  ${ref("drive_source_absentismo")}
-WHERE
-  ${helpers.cleanString("id_empleado")} IS NOT NULL
+${files.length <= 1 ? selectFromExternal(ref("drive_source_absentismo"), files[0]) :
+  files.map((file, idx) => selectFromExternal(
+    idx === 0 ? ref("drive_source_absentismo") : `${constants.SCHEMAS.RAW}.ext_absentismo_${idx}`,
+    file
+  )).join("\nUNION ALL\n")
+}

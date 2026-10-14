@@ -22,12 +22,40 @@ config {
   }
 }
 
+js {
+  const files = helpers.getFilesForTag("prezero");
+
+  function selectFromExternal(tableRef, file) {
+    const fId = file ? file.id : "";
+    const fName = file ? file.name : "";
+    return `
+      SELECT
+        ${helpers.cleanString("id_registro")} AS id_registro,
+        UPPER(COALESCE(${helpers.cleanString("centro_operativo")}, "CENTRO_GENERAL")) AS centro_operativo,
+        UPPER(COALESCE(${helpers.cleanString("tipo_residuo")}, "GENERAL")) AS tipo_residuo,
+        SAFE_CAST(peso_neto_kg AS NUMERIC) AS peso_neto_kg,
+        COALESCE(SAFE_CAST(fecha_operacion AS DATE), CURRENT_DATE()) AS fecha_operacion,
+        SAFE_CAST(fecha_hora_pesaje AS TIMESTAMP) AS fecha_hora_pesaje,
+        '${fId}' AS file_id,
+        '${fName}' AS file_name,
+        '${fId}' AS _source_file_id,
+        '${fName}' AS _source_file_name,
+        CURRENT_TIMESTAMP() AS _dw_loaded_at,
+        SESSION_USER() AS _dw_loaded_by
+      FROM
+        ${tableRef}
+      WHERE
+        ${helpers.cleanString("id_registro")} IS NOT NULL
+    `;
+  }
+}
+
 pre_operations {
   BEGIN
     DECLARE obj_type STRING;
     SET obj_type = (
       SELECT table_type 
-      FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES\`
+      FROM ${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES
       WHERE table_name = '${self().name}'
     );
     IF obj_type = 'VIEW' THEN
@@ -38,15 +66,9 @@ pre_operations {
   END;
 }
 
-SELECT
-  ${helpers.cleanString("id_registro")} AS id_registro,
-  UPPER(COALESCE(${helpers.cleanString("centro_operativo")}, "CENTRO_GENERAL")) AS centro_operativo,
-  UPPER(COALESCE(${helpers.cleanString("tipo_residuo")}, "GENERAL")) AS tipo_residuo,
-  SAFE_CAST(peso_neto_kg AS NUMERIC) AS peso_neto_kg,
-  COALESCE(SAFE_CAST(fecha_operacion AS DATE), CURRENT_DATE()) AS fecha_operacion,
-  SAFE_CAST(fecha_hora_pesaje AS TIMESTAMP) AS fecha_hora_pesaje,
-  ${helpers.auditColumns(true)}
-FROM
-  ${ref("drive_source_prezero")}
-WHERE
-  ${helpers.cleanString("id_registro")} IS NOT NULL
+${files.length <= 1 ? selectFromExternal(ref("drive_source_prezero"), files[0]) :
+  files.map((file, idx) => selectFromExternal(
+    idx === 0 ? ref("drive_source_prezero") : `${constants.SCHEMAS.RAW}.ext_prezero_${idx}`,
+    file
+  )).join("\nUNION ALL\n")
+}

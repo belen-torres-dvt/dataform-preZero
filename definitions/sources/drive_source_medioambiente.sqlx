@@ -4,75 +4,37 @@ config {
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_medioambiente",
   tags: ["medioambiente", "source"],
-  description: "Crea tablas externas BigQuery para los CSVs de Soluciones Medioambientales en bq_drive_euw1 y expone la vista consolidada"
+  description: "Tabla externa BigQuery en bq_drive_euw1 apuntando a los datos de Soluciones Medioambientales en Google Drive"
 }
 
 js {
   const files = helpers.getFilesForTag("medioambiente");
 }
 
--- 1. Crear tablas externas en bq_drive_euw1 para cada fichero CSV que coincide con 'soluciones_medioambientales'
-${files.map((file, idx) => `
-  CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}\`
+-- 1. Si existía una vista previa con este nombre, eliminarla para permitir crear la TABLA EXTERNA sin conflictos de tipo
+BEGIN
+  DECLARE obj_type STRING;
+  SET obj_type = (
+    SELECT table_type 
+    FROM ${constants.SCHEMAS.RAW}.INFORMATION_SCHEMA.TABLES
+    WHERE table_name = '${self().name}'
+  );
+  IF obj_type = 'VIEW' THEN
+    DROP VIEW IF EXISTS ${self()};
+  END IF;
+EXCEPTION WHEN ERROR THEN
+  NULL;
+END;
+
+-- 2. Crear directamente la tabla externa en bq_drive_euw1 (sin vistas intermedias)
+${files.length > 0 ? files.map((file, idx) => `
+  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}`}
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],
     skip_leading_rows = 1,
     autodetect = TRUE
   );
-`).join("\n")}
-
--- 2. Eliminar la tabla base previa si existía como TABLE para permitir crear la VIEW sin conflictos de tipo
-BEGIN
-  DECLARE obj_type STRING;
-  SET obj_type = (
-    SELECT table_type 
-    FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.INFORMATION_SCHEMA.TABLES\`
-    WHERE table_name = '${self().name}'
-  );
-  IF obj_type = 'BASE TABLE' THEN
-    DROP TABLE IF EXISTS ${self()};
-  END IF;
-EXCEPTION WHEN ERROR THEN
-  NULL;
-END;
-
--- 3. Vista unificada en el dataset de Drive que expone las tablas externas con metadatos de fichero
-CREATE OR REPLACE VIEW ${self()} AS
-${files.length > 0 ? files.map((file, idx) => `
-  SELECT
-    *,
-    '${file.id}' AS file_id,
-    '${file.name}' AS file_name,
-    '${file.id}' AS _source_file_id,
-    '${file.name}' AS _source_file_name
-  FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}\`
-`).join("\nUNION ALL\n") : `
-  SELECT
-    CAST(NULL AS STRING) AS id_proyecto,
-    CAST(NULL AS STRING) AS fecha_registro,
-    CAST(NULL AS STRING) AS nombre_solucion,
-    CAST(NULL AS STRING) AS categoria_solucion,
-    CAST(NULL AS STRING) AS pais,
-    CAST(NULL AS STRING) AS region_geografica,
-    CAST(NULL AS STRING) AS empresa_proveedora,
-    CAST(NULL AS STRING) AS sector_cliente,
-    CAST(NULL AS STRING) AS coste_implementacion_eur,
-    CAST(NULL AS STRING) AS ahorro_anual_estimado_eur,
-    CAST(NULL AS STRING) AS reduccion_co2_ton_ano,
-    CAST(NULL AS STRING) AS volumen_agua_reciclada_m3,
-    CAST(NULL AS STRING) AS energia_renovable_generada_mwh,
-    CAST(NULL AS STRING) AS residuos_desviados_vertedero_ton,
-    CAST(NULL AS STRING) AS estado_proyecto,
-    CAST(NULL AS STRING) AS certificacion_ambiental,
-    CAST(NULL AS STRING) AS huella_carbono_inicial_ton,
-    CAST(NULL AS STRING) AS roi_estimado_anos,
-    CAST(NULL AS STRING) AS subvencion_publica_porc,
-    CAST(NULL AS STRING) AS indice_impacto_ambiental_1_10,
-    'placeholder_id' AS file_id,
-    'placeholder_name' AS file_name,
-    'placeholder_id' AS _source_file_id,
-    'placeholder_name' AS _source_file_name
-  FROM (SELECT 1)
-  WHERE FALSE
-`};
+`).join("\n") : `
+  SELECT 1;
+`}
