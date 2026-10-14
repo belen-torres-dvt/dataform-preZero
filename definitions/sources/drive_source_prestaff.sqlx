@@ -2,18 +2,18 @@ config {
   type: "operations",
   hasOutput: true,
   schema: constants.SCHEMAS.RAW,
-  name: "drive_source_prezero",
-  tags: ["prezero", "source"],
-  description: "Tabla externa BigQuery en bq_drive_euw1 apuntando a los datos de PreZero en Google Drive"
+  name: "drive_source_prestaff",
+  tags: ["prestaff", "source"],
+  description: "Tabla externa BigQuery en bq_drive_euw1 apuntando a los datos de PreStaff en Google Drive"
 }
 
 js {
-  const files = helpers.getFilesForTag("prezero");
+  const files = helpers.getFilesForTag("prestaff");
 }
 
 -- 1. Crear directamente la tabla externa en bq_drive_euw1
 ${files.length > 0 ? files.map((file, idx) => `
-  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `${constants.SCHEMAS.RAW}.ext_prezero_${idx}`}
+  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `${constants.SCHEMAS.RAW}.ext_prestaff_${idx}`}
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],

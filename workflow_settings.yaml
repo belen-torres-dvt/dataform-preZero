@@ -10,7 +10,7 @@ vars:
   # Parámetros dinámicos inyectados vía Apps Script o Dataform API
   archivos_json: "[]" # Lista serializada JSON con [{id: "...", name: "..."}] enviada por Apps Script
   csv_files_json: "[]" # Alias compatible
-  active_tag: "" # Tag seleccionado por Apps Script (ej: "prezero", "absentismo", "medioambiente")
+  active_tag: "" # Tag seleccionado por Apps Script (ej: "prestaff", "absentismo", "medioambiente")
   tag: "" # Alias para el tag del proceso
   drive_folder_id: "1Wc7Nc1EOnzZP0ZNXyTFwWCAYrG4E77i8"
   drive_file_id: ""

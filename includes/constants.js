@@ -1,5 +1,5 @@
 /**
- * Constantes del proyecto Dataform - PreZero Sandbox
+ * Constantes del proyecto Dataform - PreStaff Sandbox
  * Proyecto GCP: belen-torres-sandbox1
  */
 
@@ -32,7 +32,7 @@ const STATUS = {
 };
 
 const TAGS = {
-  PREZERO: "prezero",
+  PRESTAFF: "prestaff",
   ABSENTISMO: "absentismo",
   MEDIOAMBIENTE: "medioambiente"
 };

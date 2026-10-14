@@ -86,7 +86,7 @@ function driveUri(fileId, fileType = "CSV") {
  * Soporta tanto `archivos_json` como `csv_files_json`.
  * Si no se especifica active_tag, filtra automáticamente por el nombre del archivo.
  *
- * @param {string} targetTag - Tag de proceso esperado (ej: "prezero", "absentismo", "medioambiente")
+ * @param {string} targetTag - Tag de proceso esperado (ej: "prestaff", "absentismo", "medioambiente")
  * @returns {Array<{id: string, name: string}>} Lista de ficheros a compilar
  */
 function getFilesForTag(targetTag) {
@@ -121,7 +121,7 @@ function getFilesForTag(targetTag) {
 
   if (fileList.length > 0) {
     const tagPatterns = {
-      prezero: /prezero|pre_zero/i,
+      prestaff: /prestaff|pre_staff/i,
       absentismo: /absentismo|bajas_laborales|absenteeism/i,
       medioambiente: /soluciones_medioambientales|medioambiente|medio_ambiente/i
     };

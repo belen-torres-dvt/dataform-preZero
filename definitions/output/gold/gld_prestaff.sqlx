@@ -1,8 +1,8 @@
 config {
   type: "table",
   schema: constants.SCHEMAS.GOLD,
-  tags: ["prezero", "gold", "bi"],
-  description: "Capa Gold: Resumen analítico diario de pesajes y material por centro operativo PreZero",
+  tags: ["prestaff", "gold", "bi"],
+  description: "Capa Gold: Resumen analítico diario de pesajes y material por centro operativo PreStaff",
   bigquery: {
     partitionBy: "fecha_operacion",
     clusterBy: ["centro_operativo", "tipo_residuo"]
@@ -37,7 +37,7 @@ SELECT
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
-  ${ref("slv_prezero")}
+  ${ref("slv_prestaff")}
 GROUP BY
   fecha_operacion,
   centro_operativo,

@@ -1,13 +1,13 @@
 config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
-  tags: ["prezero", "silver"],
-  description: "Capa Silver: Registros de PreZero limpios, tipados, deduplicados y con surrogate key determinista (Histórico)",
+  tags: ["prestaff", "silver"],
+  description: "Capa Silver: Registros de PreStaff limpios, tipados, deduplicados y con surrogate key determinista (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
   },
   columns: {
-    prezero_sk: "Surrogate Key determinista SHA256 (id_registro + fecha_operacion)",
+    prestaff_sk: "Surrogate Key determinista SHA256 (id_registro + fecha_operacion)",
     id_registro: "Identificador del registro de pesaje",
     centro_operativo: "Centro o planta operativa estandarizada",
     tipo_residuo: "Tipología de material estandarizada",
@@ -22,14 +22,14 @@ config {
     _dw_loaded_by: docs.columns._dw_loaded_by
   },
   assertions: {
-    uniqueKey: ["prezero_sk"],
-    nonNull: ["prezero_sk", "id_registro"]
+    uniqueKey: ["prestaff_sk"],
+    nonNull: ["prestaff_sk", "id_registro"]
   }
 }
 
 
 SELECT
-  ${helpers.surrogateKey(["id_registro", "fecha_operacion"])} AS prezero_sk,
+  ${helpers.surrogateKey(["id_registro", "fecha_operacion"])} AS prestaff_sk,
   ${helpers.cleanString("id_registro")} AS id_registro,
   UPPER(COALESCE(${helpers.cleanString("centro_operativo")}, "CENTRO_GENERAL")) AS centro_operativo,
   UPPER(COALESCE(${helpers.cleanString("tipo_residuo")}, "GENERAL")) AS tipo_residuo,
@@ -43,11 +43,11 @@ SELECT
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
-  ${ref("brz_prezero")}
+  ${ref("brz_prestaff")}
 WHERE
   ${helpers.cleanString("id_registro")} IS NOT NULL
-  ${when(incremental() && helpers.hasFilesForTag("prezero"), `AND file_name IN (${helpers.getFileNamesSqlList("prezero")})`)}
-  ${when(incremental() && !helpers.hasFilesForTag("prezero"), `AND FALSE`)}
+  ${when(incremental() && helpers.hasFilesForTag("prestaff"), `AND file_name IN (${helpers.getFileNamesSqlList("prestaff")})`)}
+  ${when(incremental() && !helpers.hasFilesForTag("prestaff"), `AND FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_registro, fecha_operacion 
   ORDER BY fecha_hora_pesaje DESC, _dw_loaded_at DESC

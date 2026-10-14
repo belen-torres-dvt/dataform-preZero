@@ -1,0 +1,12 @@
+config {
+  type: "table",
+  schema: constants.SCHEMAS.BRONZE,
+  tags: ["prestaff", "bronze"],
+  description: "Capa Bronze: Ingesta en bruto de registros de pesajes PreStaff en tabla nativa BigQuery"
+}
+
+SELECT
+  *,
+  ${helpers.auditColumns("prestaff")}
+FROM
+  ${ref("drive_source_prestaff")}
