@@ -1,19 +1,29 @@
 config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
+  dependencies: ["brz_prestaff"],
   tags: ["prestaff", "silver"],
-  description: "Capa Silver: Registros de PreStaff limpios, tipados, deduplicados y con surrogate key determinista (Histórico)",
+  description: "Capa Silver: Registros de PreStaff unificados por UNION ALL, tipados, deduplicados y con partición por nombre_fichero",
   bigquery: {
-    clusterBy: ["file_name"]
+    clusterBy: ["nombre_fichero", "numero_personal"]
   },
   columns: {
-    prestaff_sk: "Surrogate Key determinista SHA256 (id_registro + fecha_operacion)",
-    id_registro: "Identificador del registro de pesaje",
-    centro_operativo: "Centro o planta operativa estandarizada",
-    tipo_residuo: "Tipología de material estandarizada",
-    peso_neto_kg: "Peso neto en kilogramos verificado",
-    fecha_operacion: "Fecha de la operación",
-    fecha_hora_pesaje: "Timestamp del pesaje",
+    prestaff_sk: "Surrogate Key determinista SHA256 (numero_personal + Year + Month + codigo_absentismo + Contrato + nombre_fichero)",
+    nombre_fichero: "Sufijo/identificador del fichero mensual (ej: 202607) para eliminación y recarga idempotente sin duplicados",
+    year: "Año del registro",
+    month: "Mes del registro",
+    division: "División de la organización",
+    numero_personal: "Identificador del empleado (Número de Personal)",
+    categoria_profesional: "Categoría profesional asignada",
+    agrupador: "Agrupador del registro",
+    codigo_absentismo: "Código de absentismo",
+    descripcion: "Descripción del absentismo",
+    contrato: "Tipo o código de contrato",
+    ftes_dia: "FTEs diarios",
+    divisor_mes: "Divisor mensual",
+    ftes_mes: "FTEs mensuales",
+    divisor_ano: "Divisor anual",
+    ftes_ano: "FTEs anuales",
     file_id: docs.columns.file_id,
     file_name: docs.columns.file_name,
     _source_file_id: docs.columns._source_file_id,
@@ -23,32 +33,89 @@ config {
   }
 }
 
+pre_operations {
+  ${when(incremental() && helpers.hasFilesForTag("prestaff"), `
+    DELETE FROM ${self()}
+    WHERE nombre_fichero IN (${helpers.getSuffixesSqlList("prestaff")})
+  `)}
+}
 
 js {
   const files = helpers.getFilesForTag("prestaff");
 
   function getBronzeSources() {
-    if (files.length <= 1) {
-      return `SELECT * FROM ${ref("brz_prestaff")}`;
+    if (files.length === 0) {
+      return `SELECT 
+        CAST(NULL AS STRING) AS \`Year\`,
+        CAST(NULL AS STRING) AS \`Month\`,
+        CAST(NULL AS STRING) AS \`División\`,
+        CAST(NULL AS STRING) AS \`Número de Personal\`,
+        CAST(NULL AS STRING) AS \`Categoría profesional\`,
+        CAST(NULL AS STRING) AS \`Agrupador\`,
+        CAST(NULL AS STRING) AS \`Código Absentismo\`,
+        CAST(NULL AS STRING) AS \`descripción\`,
+        CAST(NULL AS STRING) AS \`Contrato\`,
+        CAST(NULL AS STRING) AS \`ftes_dia\`,
+        CAST(NULL AS STRING) AS \`divisor_mes\`,
+        CAST(NULL AS STRING) AS \`Ftes_mes\`,
+        CAST(NULL AS STRING) AS \`divisor_año\`,
+        CAST(NULL AS STRING) AS \`Ftes_año\`,
+        CAST(NULL AS STRING) AS nombre_fichero,
+        CAST(NULL AS STRING) AS file_id,
+        CAST(NULL AS STRING) AS file_name,
+        CAST(NULL AS STRING) AS _source_file_id,
+        CAST(NULL AS STRING) AS _source_file_name,
+        CAST(NULL AS TIMESTAMP) AS _dw_loaded_at,
+        CAST(NULL AS STRING) AS _dw_loaded_by
+      WHERE FALSE`;
     }
     return files.map((file, idx) => {
       const suffix = helpers.getFileMonthSuffix(file.name, idx);
-      const tableRef = idx === 0
-        ? ref("brz_prestaff")
-        : `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_prestaff_${suffix}\``;
-      return `SELECT * FROM ${tableRef}`;
+      const tableRef = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_prestaff_${suffix}\``;
+      return `SELECT 
+        \`Year\`,
+        \`Month\`,
+        \`División\`,
+        \`Número de Personal\`,
+        \`Categoría profesional\`,
+        \`Agrupador\`,
+        \`Código Absentismo\`,
+        \`descripción\`,
+        \`Contrato\`,
+        \`ftes_dia\`,
+        \`divisor_mes\`,
+        \`Ftes_mes\`,
+        \`divisor_año\`,
+        \`Ftes_año\`,
+        '${suffix}' AS nombre_fichero,
+        file_id,
+        file_name,
+        _source_file_id,
+        _source_file_name,
+        _dw_loaded_at,
+        _dw_loaded_by
+      FROM ${tableRef}`;
     }).join("\n  UNION ALL\n  ");
   }
 }
 
 SELECT
-  ${helpers.surrogateKey(["id_registro", "fecha_operacion"])} AS prestaff_sk,
-  ${helpers.cleanString("id_registro")} AS id_registro,
-  UPPER(COALESCE(${helpers.cleanString("centro_operativo")}, "CENTRO_GENERAL")) AS centro_operativo,
-  UPPER(COALESCE(${helpers.cleanString("tipo_residuo")}, "GENERAL")) AS tipo_residuo,
-  COALESCE(SAFE_CAST(REPLACE(CAST(peso_neto_kg AS STRING), ',', '.') AS NUMERIC), 0) AS peso_neto_kg,
-  COALESCE(SAFE_CAST(fecha_operacion AS DATE), CURRENT_DATE()) AS fecha_operacion,
-  SAFE_CAST(fecha_hora_pesaje AS TIMESTAMP) AS fecha_hora_pesaje,
+  ${helpers.surrogateKey(["\`Número de Personal\`", "Year", "Month", "COALESCE(\`Código Absentismo\`, '_na_')", "COALESCE(Contrato, '_na_')", "nombre_fichero"])} AS prestaff_sk,
+  nombre_fichero,
+  SAFE_CAST(Year AS INT64) AS year,
+  SAFE_CAST(Month AS INT64) AS month,
+  ${helpers.cleanString("\`División\`")} AS division,
+  ${helpers.cleanString("\`Número de Personal\`")} AS numero_personal,
+  ${helpers.cleanString("\`Categoría profesional\`")} AS categoria_profesional,
+  ${helpers.cleanString("Agrupador")} AS agrupador,
+  ${helpers.cleanString("\`Código Absentismo\`")} AS codigo_absentismo,
+  ${helpers.cleanString("\`descripción\`")} AS descripcion,
+  ${helpers.cleanString("Contrato")} AS contrato,
+  COALESCE(SAFE_CAST(REPLACE(CAST(ftes_dia AS STRING), ',', '.') AS NUMERIC), 0) AS ftes_dia,
+  COALESCE(SAFE_CAST(REPLACE(CAST(divisor_mes AS STRING), ',', '.') AS NUMERIC), 0) AS divisor_mes,
+  COALESCE(SAFE_CAST(REPLACE(CAST(Ftes_mes AS STRING), ',', '.') AS NUMERIC), 0) AS ftes_mes,
+  COALESCE(SAFE_CAST(REPLACE(CAST(\`divisor_año\` AS STRING), ',', '.') AS NUMERIC), 0) AS divisor_ano,
+  COALESCE(SAFE_CAST(REPLACE(CAST(\`Ftes_año\` AS STRING), ',', '.') AS NUMERIC), 0) AS ftes_ano,
   file_id,
   file_name,
   _source_file_id,
@@ -59,10 +126,16 @@ FROM (
   ${getBronzeSources()}
 )
 WHERE
-  ${helpers.cleanString("id_registro")} IS NOT NULL
-  ${when(incremental() && helpers.hasFilesForTag("prestaff"), `AND file_name IN (${helpers.getFileNamesSqlList("prestaff")})`)}
+  ${helpers.cleanString("\`Número de Personal\`")} IS NOT NULL
+  ${when(incremental() && helpers.hasFilesForTag("prestaff"), `AND nombre_fichero IN (${helpers.getSuffixesSqlList("prestaff")})`)}
   ${when(incremental() && !helpers.hasFilesForTag("prestaff"), `AND FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
-  PARTITION BY id_registro, fecha_operacion 
-  ORDER BY fecha_hora_pesaje DESC, _dw_loaded_at DESC
+  PARTITION BY 
+    \`Número de Personal\`, 
+    Year, 
+    Month, 
+    COALESCE(\`Código Absentismo\`, ''), 
+    COALESCE(Contrato, ''), 
+    nombre_fichero
+  ORDER BY _dw_loaded_at DESC
 ) = 1

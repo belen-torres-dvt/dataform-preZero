@@ -2,15 +2,19 @@ config {
   type: "assertion",
   schema: constants.SCHEMAS.ASSERTIONS,
   //tags: ["prestaff", "assertions"],
-  description: "Calidad PreStaff: Comprueba que ningún pesaje contenga pesos netos negativos"
+  description: "Calidad PreStaff: Comprueba que ningún registro contenga FTEs negativos"
 }
 
 SELECT
   prestaff_sk,
-  id_registro,
-  peso_neto_kg,
+  numero_personal,
+  year,
+  month,
+  ftes_dia,
+  ftes_mes,
+  nombre_fichero,
   _source_file_id
 FROM
   ${ref("slv_prestaff")}
 WHERE
-  peso_neto_kg < 0
+  ftes_dia < 0 OR ftes_mes < 0 OR ftes_ano < 0

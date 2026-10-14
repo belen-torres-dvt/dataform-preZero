@@ -191,6 +191,21 @@ function getFileMonthSuffix(fileName, fallback = "0") {
   return clean || String(fallback);
 }
 
+/**
+ * Devuelve la lista formateada en SQL ('202607', '202608') de sufijos de archivos para un tag.
+ * Si no hay archivos, devuelve "''".
+ *
+ * @param {string} targetTag - Tag de proceso esperado
+ * @returns {string} Fragmento SQL de sufijos entre comillas simples
+ */
+function getSuffixesSqlList(targetTag) {
+  const files = getFilesForTag(targetTag);
+  if (!files || files.length === 0) {
+    return "''";
+  }
+  return files.map((f, idx) => `'${getFileMonthSuffix(f.name, idx)}'`).join(", ");
+}
+
 module.exports = {
   surrogateKey,
   auditColumns,
@@ -198,7 +213,9 @@ module.exports = {
   driveUri,
   getFilesForTag,
   getFileNamesSqlList,
+  getSuffixesSqlList,
   hasFilesForTag,
   getFileMonthSuffix
 };
+
 

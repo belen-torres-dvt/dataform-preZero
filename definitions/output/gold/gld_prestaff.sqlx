@@ -2,39 +2,48 @@ config {
   type: "table",
   schema: constants.SCHEMAS.GOLD,
   tags: ["prestaff", "gold", "bi"],
-  description: "Capa Gold: Resumen analítico diario de pesajes y material por centro operativo PreStaff",
+  description: "Capa Gold: Resumen analítico mensual de plantilla y FTEs por división y categoría profesional PreStaff",
   bigquery: {
-    partitionBy: "fecha_operacion",
-    clusterBy: ["centro_operativo", "tipo_residuo"]
+    clusterBy: ["division", "categoria_profesional"]
   },
   columns: {
-    kpi_sk: "Surrogate key unívoca para la granularidad fecha-centro-residuo",
-    fecha_operacion: "Fecha de la operación",
-    centro_operativo: "Centro o instalación operativa",
-    tipo_residuo: "Fracción de residuo o material",
-    total_pesajes: "Número total de pesajes realizados",
-    total_peso_neto_kg: "Suma total acumulada de peso neto en kilogramos",
-    total_peso_toneladas: "Suma total acumulada convertida a toneladas métricas",
-    avg_peso_neto_kg: "Peso promedio por pesaje",
+    kpi_sk: "Surrogate key unívoca para la granularidad year-month-division-categoria-fichero",
+    year: "Año del período",
+    month: "Mes del período",
+    nombre_fichero: "Sufijo/identificador del fichero mensual (ej: 202607)",
+    division: "División de la organización",
+    categoria_profesional: "Categoría profesional asignada",
+    total_registros: "Número total de registros o líneas de absentismo/plantilla",
+    total_empleados: "Número de empleados únicos computados",
+    total_ftes_mes: "Suma total acumulada de FTEs mensuales",
+    total_ftes_dia: "Suma total acumulada de FTEs diarios",
+    total_ftes_ano: "Suma total acumulada de FTEs anuales",
+    avg_ftes_mes: "Promedio de FTEs mensuales por registro",
     _dw_loaded_at: docs.columns._dw_loaded_at,
     _dw_loaded_by: docs.columns._dw_loaded_by
   }
 }
 
 SELECT
-  ${helpers.surrogateKey(["fecha_operacion", "centro_operativo", "tipo_residuo"])} AS kpi_sk,
-  fecha_operacion,
-  centro_operativo,
-  tipo_residuo,
-  COUNT(1) AS total_pesajes,
-  ROUND(SUM(peso_neto_kg), 2) AS total_peso_neto_kg,
-  ROUND(SUM(peso_neto_kg) / 1000.0, 3) AS total_peso_toneladas,
-  ROUND(AVG(peso_neto_kg), 2) AS avg_peso_neto_kg,
+  ${helpers.surrogateKey(["year", "month", "division", "categoria_profesional", "nombre_fichero"])} AS kpi_sk,
+  year,
+  month,
+  nombre_fichero,
+  division,
+  categoria_profesional,
+  COUNT(1) AS total_registros,
+  COUNT(DISTINCT numero_personal) AS total_empleados,
+  ROUND(SUM(ftes_mes), 4) AS total_ftes_mes,
+  ROUND(SUM(ftes_dia), 4) AS total_ftes_dia,
+  ROUND(SUM(ftes_ano), 4) AS total_ftes_ano,
+  ROUND(AVG(ftes_mes), 4) AS avg_ftes_mes,
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("slv_prestaff")}
 GROUP BY
-  fecha_operacion,
-  centro_operativo,
-  tipo_residuo
+  year,
+  month,
+  nombre_fichero,
+  division,
+  categoria_profesional
