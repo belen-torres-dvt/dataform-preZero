@@ -1,12 +1,24 @@
 config {
-  type: "table",
+  type: "operations",
+  hasOutput: true,
   schema: constants.SCHEMAS.BRONZE,
+  name: "brz_absentismo",
+  dependencies: ["drive_source_absentismo"],
   tags: ["absentismo", "bronze"],
-  description: "Capa Bronze: Ingesta en bruto de datos de absentismo en tabla nativa BigQuery"
+  description: "Capa Bronze: Ingesta en bruto de datos de absentismo en tabla nativa BigQuery protegida ante ficheros ausentes"
 }
 
-SELECT
-  *,
-  ${helpers.auditColumns("absentismo")}
-FROM
-  ${ref("drive_source_absentismo")}
+js {
+  const files = helpers.getFilesForTag("absentismo");
+}
+
+${files.length > 0 ? `
+  CREATE OR REPLACE TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_absentismo\` AS
+  SELECT
+    *,
+    ${helpers.auditColumns("absentismo")}
+  FROM
+    \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_absentismo\`;
+` : `
+  SELECT 1;
+`}
