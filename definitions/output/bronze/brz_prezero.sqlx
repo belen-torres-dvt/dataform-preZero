@@ -1,8 +1,11 @@
 config {
-  type: "view",
+  type: "table",
   schema: constants.SCHEMAS.BRONZE,
   tags: ["prezero", "bronze"],
-  description: "Capa Bronze: Tipado inicial y saneamiento de registros de pesajes y operaciones PreZero",
+  description: "Capa Bronze: Tipado inicial y saneamiento de registros de pesajes y operaciones PreZero (Tabla Nativa)",
+  bigquery: {
+    clusterBy: ["file_name"]
+  },
   columns: {
     id_registro: "Identificador del registro de pesaje u operación",
     centro_operativo: "Nombre o código de la planta / centro operativo",
@@ -17,6 +20,22 @@ config {
     _dw_loaded_at: docs.columns._dw_loaded_at,
     _dw_loaded_by: docs.columns._dw_loaded_by
   }
+}
+
+pre_operations {
+  BEGIN
+    DECLARE obj_type STRING;
+    SET obj_type = (
+      SELECT table_type 
+      FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES\`
+      WHERE table_name = '${self().name}'
+    );
+    IF obj_type = 'VIEW' THEN
+      DROP VIEW IF EXISTS ${self()};
+    END IF;
+  EXCEPTION WHEN ERROR THEN
+    NULL;
+  END;
 }
 
 SELECT

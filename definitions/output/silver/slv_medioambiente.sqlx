@@ -2,7 +2,7 @@ config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   tags: ["medioambiente", "silver"],
-  description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, deduplicados y con clave subrogada",
+  description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, deduplicados y con clave subrogada (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
   },
@@ -42,9 +42,16 @@ config {
 }
 
 pre_operations {
+  ${when(incremental(), `
+    ALTER TABLE ${self()}
+    ADD COLUMN IF NOT EXISTS file_id STRING,
+    ADD COLUMN IF NOT EXISTS file_name STRING,
+    ADD COLUMN IF NOT EXISTS _source_file_id STRING,
+    ADD COLUMN IF NOT EXISTS _source_file_name STRING;
+  `)}
   ${when(incremental() && helpers.hasFilesForTag("medioambiente"),
-    `DELETE FROM ${self()} WHERE file_name IN (${helpers.getFileNamesSqlList("medioambiente")})`,
-    `SELECT 1`
+    `DELETE FROM ${self()} WHERE file_name IN (${helpers.getFileNamesSqlList("medioambiente")});`,
+    `SELECT 1;`
   )}
 }
 
@@ -78,6 +85,7 @@ SELECT
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_medioambiente")}
+${when(incremental() && helpers.hasFilesForTag("medioambiente"), `WHERE file_name IN (${helpers.getFileNamesSqlList("medioambiente")})`)}
 ${when(incremental() && !helpers.hasFilesForTag("medioambiente"), `WHERE FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_proyecto

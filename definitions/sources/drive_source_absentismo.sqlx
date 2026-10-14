@@ -4,28 +4,41 @@ config {
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_absentismo",
   tags: ["absentismo", "source"],
-  description: "Crea tablas externas BigQuery para los CSVs de Absentismo y las materializa en una tabla nativa"
+  description: "Crea tablas externas BigQuery para los CSVs de Absentismo en bq_drive_euw1 y expone la vista consolidada"
 }
 
 js {
   const files = helpers.getFilesForTag("absentismo");
 }
 
--- Crear una tabla externa en bq_drive_euw1 para cada fichero CSV que coincide con 'absentismo'
+-- 1. Crear tablas externas en bq_drive_euw1 para cada fichero CSV que coincide con 'absentismo'
 ${files.map((file, idx) => `
   CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_absentismo_${idx}\`
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],
-    skip_leading_rows = 1
+    skip_leading_rows = 1,
+    autodetect = TRUE
   );
 `).join("\n")}
 
--- Eliminar la vista previa si existía para permitir crear la tabla nativa sin conflictos de tipo
-DROP VIEW IF EXISTS ${self()};
+-- 2. Eliminar la tabla base previa si existía como TABLE para permitir crear la VIEW sin conflictos de tipo
+BEGIN
+  DECLARE obj_type STRING;
+  SET obj_type = (
+    SELECT table_type 
+    FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.INFORMATION_SCHEMA.TABLES\`
+    WHERE table_name = '${self().name}'
+  );
+  IF obj_type = 'BASE TABLE' THEN
+    DROP TABLE IF EXISTS ${self()};
+  END IF;
+EXCEPTION WHEN ERROR THEN
+  NULL;
+END;
 
--- Materializar los CSVs de Drive en una tabla nativa BigQuery para acelerar lecturas downstream (Bronze y Silver)
-CREATE OR REPLACE TABLE ${self()} AS
+-- 3. Vista unificada en el dataset de Drive que expone las tablas externas con metadatos de fichero
+CREATE OR REPLACE VIEW ${self()} AS
 ${files.length > 0 ? files.map((file, idx) => `
   SELECT
     *,
@@ -50,8 +63,3 @@ ${files.length > 0 ? files.map((file, idx) => `
   FROM (SELECT 1)
   WHERE FALSE
 `};
-
--- Limpiar tablas externas temporales tras materializar los datos en la tabla nativa
-${files.map((file, idx) => `
-  DROP TABLE IF EXISTS \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_absentismo_${idx}\`;
-`).join("\n")}

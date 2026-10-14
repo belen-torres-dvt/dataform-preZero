@@ -1,8 +1,11 @@
 config {
-  type: "view",
+  type: "table",
   schema: constants.SCHEMAS.BRONZE,
   tags: ["medioambiente", "bronze"],
-  description: "Capa Bronze: Tipado inicial y normalización de proyectos de Soluciones Medioambientales",
+  description: "Capa Bronze: Tipado inicial y normalización de proyectos de Soluciones Medioambientales (Tabla Nativa)",
+  bigquery: {
+    clusterBy: ["file_name"]
+  },
   columns: {
     id_proyecto: "Identificador del proyecto medioambiental",
     fecha_registro: "Fecha de registro del proyecto",
@@ -31,6 +34,22 @@ config {
     _dw_loaded_at: docs.columns._dw_loaded_at,
     _dw_loaded_by: docs.columns._dw_loaded_by
   }
+}
+
+pre_operations {
+  BEGIN
+    DECLARE obj_type STRING;
+    SET obj_type = (
+      SELECT table_type 
+      FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES\`
+      WHERE table_name = '${self().name}'
+    );
+    IF obj_type = 'VIEW' THEN
+      DROP VIEW IF EXISTS ${self()};
+    END IF;
+  EXCEPTION WHEN ERROR THEN
+    NULL;
+  END;
 }
 
 SELECT
