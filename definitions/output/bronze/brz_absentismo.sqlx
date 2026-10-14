@@ -11,6 +11,8 @@ config {
     horas_ausencia: "Total de horas de trabajo no realizadas",
     fecha_inicio: "Fecha de inicio del periodo de baja",
     fecha_fin: "Fecha de finalización o alta médica",
+    file_id: docs.columns.file_id,
+    file_name: docs.columns.file_name,
     _source_file_id: docs.columns._source_file_id,
     _source_file_name: docs.columns._source_file_name,
     _dw_loaded_at: docs.columns._dw_loaded_at,

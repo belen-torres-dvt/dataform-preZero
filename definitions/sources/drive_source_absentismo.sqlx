@@ -4,7 +4,7 @@ config {
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_absentismo",
   tags: ["absentismo", "source"],
-  description: "Crea tablas externas BigQuery para los CSVs de Absentismo y las unifica en una vista única"
+  description: "Crea tablas externas BigQuery para los CSVs de Absentismo y las materializa en una tabla nativa"
 }
 
 js {
@@ -21,11 +21,16 @@ ${files.map((file, idx) => `
   );
 `).join("\n")}
 
--- Vista unificada de los CSVs de Absentismo con trazabilidad del fichero de origen
-CREATE OR REPLACE VIEW ${self()} AS
+-- Eliminar la vista previa si existía para permitir crear la tabla nativa sin conflictos de tipo
+DROP VIEW IF EXISTS ${self()};
+
+-- Materializar los CSVs de Drive en una tabla nativa BigQuery para acelerar lecturas downstream (Bronze y Silver)
+CREATE OR REPLACE TABLE ${self()} AS
 ${files.length > 0 ? files.map((file, idx) => `
   SELECT
     *,
+    '${file.id}' AS file_id,
+    '${file.name}' AS file_name,
     '${file.id}' AS _source_file_id,
     '${file.name}' AS _source_file_name
   FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_absentismo_${idx}\`
@@ -34,12 +39,19 @@ ${files.length > 0 ? files.map((file, idx) => `
     CAST(NULL AS STRING) AS id_empleado,
     CAST(NULL AS STRING) AS departamento,
     CAST(NULL AS STRING) AS motivo_baja,
-    CAST(NULL AS NUMERIC) AS dias_ausencia,
-    CAST(NULL AS NUMERIC) AS horas_ausencia,
-    CAST(NULL AS DATE) AS fecha_inicio,
-    CAST(NULL AS DATE) AS fecha_fin,
+    CAST(NULL AS STRING) AS dias_ausencia,
+    CAST(NULL AS STRING) AS horas_ausencia,
+    CAST(NULL AS STRING) AS fecha_inicio,
+    CAST(NULL AS STRING) AS fecha_fin,
+    'placeholder_id' AS file_id,
+    'placeholder_name' AS file_name,
     'placeholder_id' AS _source_file_id,
     'placeholder_name' AS _source_file_name
   FROM (SELECT 1)
   WHERE FALSE
 `};
+
+-- Limpiar tablas externas temporales tras materializar los datos en la tabla nativa
+${files.map((file, idx) => `
+  DROP TABLE IF EXISTS \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_absentismo_${idx}\`;
+`).join("\n")}

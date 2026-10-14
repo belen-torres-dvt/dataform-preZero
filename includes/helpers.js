@@ -30,6 +30,8 @@ function auditColumns(preserveRowMetadata = false) {
     return `
       CURRENT_TIMESTAMP() AS _dw_loaded_at,
       SESSION_USER() AS _dw_loaded_by,
+      file_id,
+      file_name,
       _source_file_id,
       _source_file_name
     `;
@@ -39,6 +41,8 @@ function auditColumns(preserveRowMetadata = false) {
   return `
     CURRENT_TIMESTAMP() AS _dw_loaded_at,
     SESSION_USER() AS _dw_loaded_by,
+    '${fileId}' AS file_id,
+    '${fileName}' AS file_name,
     '${fileId}' AS _source_file_id,
     '${fileName}' AS _source_file_name
   `;

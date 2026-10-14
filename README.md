@@ -14,9 +14,9 @@ Arquitectura base de ingeniería de datos y modelado analítico en Google Cloud 
 ### Datasets por Capa (Arquitectura Medallion)
 | Capa | Dataset BigQuery | Descripción | Tipo de Objetos |
 | :--- | :--- | :--- | :--- |
-| **Drive / Ext. Tables** | `bq_drive_euw1` | Tablas externas para cada CSV de Drive y vistas unificadas | `EXTERNAL TABLE` / `VIEW` (DDL) |
+| **Drive / Staging** | `bq_drive_euw1` | Ingesta de CSVs de Drive y materialización en tablas nativas | `EXTERNAL TABLE` / `TABLE` (DDL) |
 | **Bronze** | `bq_bronze_euw1` | Lectura 1:1, tipado inicial y captura de metadatos de fichero | `VIEW` |
-| **Silver** | `bq_silver_euw1` | Datos limpios, deduplicados con hash surrogate key SHA-256 | `TABLE` |
+| **Silver** | `bq_silver_euw1` | Datos limpios y deduplicados (Carga incremental Delete + Insert por `file_name`) | `TABLE (INCREMENTAL)` |
 | **Gold** | `bq_gold_euw1` | Modelos analíticos y KPIs agregados, particionados y clusterizados | `TABLE` |
 | **Assertions** | `bq_assertions_euw1` | Control de calidad, gobierno y validación de reglas de negocio | `ASSERTION` |
 

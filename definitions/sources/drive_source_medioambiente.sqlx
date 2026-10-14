@@ -4,7 +4,7 @@ config {
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_medioambiente",
   tags: ["medioambiente", "source"],
-  description: "Crea tablas externas BigQuery para los CSVs de Soluciones Medioambientales y las unifica en una vista"
+  description: "Crea tablas externas BigQuery para los CSVs de Soluciones Medioambientales y las materializa en una tabla nativa"
 }
 
 js {
@@ -21,38 +21,50 @@ ${files.map((file, idx) => `
   );
 `).join("\n")}
 
--- Vista unificada de los CSVs de Soluciones Medioambientales con trazabilidad del fichero de origen
-CREATE OR REPLACE VIEW ${self()} AS
+-- Eliminar la vista previa si existía para permitir crear la tabla nativa sin conflictos de tipo
+DROP VIEW IF EXISTS ${self()};
+
+-- Materializar los CSVs de Drive en una tabla nativa BigQuery para acelerar lecturas downstream (Bronze y Silver)
+CREATE OR REPLACE TABLE ${self()} AS
 ${files.length > 0 ? files.map((file, idx) => `
   SELECT
     *,
+    '${file.id}' AS file_id,
+    '${file.name}' AS file_name,
     '${file.id}' AS _source_file_id,
     '${file.name}' AS _source_file_name
   FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}\`
 `).join("\nUNION ALL\n") : `
   SELECT
     CAST(NULL AS STRING) AS id_proyecto,
-    CAST(NULL AS DATE) AS fecha_registro,
+    CAST(NULL AS STRING) AS fecha_registro,
     CAST(NULL AS STRING) AS nombre_solucion,
     CAST(NULL AS STRING) AS categoria_solucion,
     CAST(NULL AS STRING) AS pais,
     CAST(NULL AS STRING) AS region_geografica,
     CAST(NULL AS STRING) AS empresa_proveedora,
     CAST(NULL AS STRING) AS sector_cliente,
-    CAST(NULL AS NUMERIC) AS coste_implementacion_eur,
-    CAST(NULL AS NUMERIC) AS ahorro_anual_estimado_eur,
-    CAST(NULL AS NUMERIC) AS reduccion_co2_ton_ano,
-    CAST(NULL AS NUMERIC) AS volumen_agua_reciclada_m3,
-    CAST(NULL AS NUMERIC) AS energia_renovable_generada_mwh,
-    CAST(NULL AS NUMERIC) AS residuos_desviados_vertedero_ton,
+    CAST(NULL AS STRING) AS coste_implementacion_eur,
+    CAST(NULL AS STRING) AS ahorro_anual_estimado_eur,
+    CAST(NULL AS STRING) AS reduccion_co2_ton_ano,
+    CAST(NULL AS STRING) AS volumen_agua_reciclada_m3,
+    CAST(NULL AS STRING) AS energia_renovable_generada_mwh,
+    CAST(NULL AS STRING) AS residuos_desviados_vertedero_ton,
     CAST(NULL AS STRING) AS estado_proyecto,
     CAST(NULL AS STRING) AS certificacion_ambiental,
-    CAST(NULL AS NUMERIC) AS huella_carbono_inicial_ton,
-    CAST(NULL AS NUMERIC) AS roi_estimado_anos,
-    CAST(NULL AS NUMERIC) AS subvencion_publica_porc,
-    CAST(NULL AS NUMERIC) AS indice_impacto_ambiental_1_10,
+    CAST(NULL AS STRING) AS huella_carbono_inicial_ton,
+    CAST(NULL AS STRING) AS roi_estimado_anos,
+    CAST(NULL AS STRING) AS subvencion_publica_porc,
+    CAST(NULL AS STRING) AS indice_impacto_ambiental_1_10,
+    'placeholder_id' AS file_id,
+    'placeholder_name' AS file_name,
     'placeholder_id' AS _source_file_id,
     'placeholder_name' AS _source_file_name
   FROM (SELECT 1)
   WHERE FALSE
 `};
+
+-- Limpiar tablas externas temporales tras materializar los datos en la tabla nativa
+${files.map((file, idx) => `
+  DROP TABLE IF EXISTS \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}\`;
+`).join("\n")}

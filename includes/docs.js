@@ -18,6 +18,8 @@ const columns = {
   event_timestamp: "Timestamp exacto en que ocurrió el evento u operación",
 
   // Metadatos de auditoría y procedencia (Drive)
+  file_id: "ID único de Google Drive del fichero origen procesado",
+  file_name: "Nombre del archivo CSV origen procesado",
   _source_file_id: "ID único de Google Drive del fichero origen procesado",
   _source_file_name: "Nombre del fichero de Google Drive procesado según parámetros enviados por Apps Script",
   _dw_loaded_at: "Timestamp en UTC del momento de inserción y procesamiento en BigQuery por Dataform",

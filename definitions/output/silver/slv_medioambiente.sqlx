@@ -1,8 +1,11 @@
 config {
-  type: "table",
+  type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   tags: ["medioambiente", "silver"],
   description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, deduplicados y con clave subrogada",
+  bigquery: {
+    clusterBy: ["file_name"]
+  },
   columns: {
     proyecto_sk: "Surrogate Key determinista SHA256 (id_proyecto)",
     id_proyecto: "Identificador del proyecto medioambiental",
@@ -25,6 +28,8 @@ config {
     roi_estimado_anos: "Plazo estimado de recuperación de la inversión (años)",
     subvencion_publica_porc: "Porcentaje de subvención pública sobre el coste",
     indice_impacto_ambiental_1_10: "Índice de impacto ambiental (escala 1 a 10)",
+    file_id: docs.columns.file_id,
+    file_name: docs.columns.file_name,
     _source_file_id: docs.columns._source_file_id,
     _source_file_name: docs.columns._source_file_name,
     _dw_loaded_at: docs.columns._dw_loaded_at,
@@ -34,6 +39,18 @@ config {
     uniqueKey: ["proyecto_sk"],
     nonNull: ["proyecto_sk", "id_proyecto"]
   }
+}
+
+js {
+  const files = helpers.getFilesForTag("medioambiente");
+  const fileNamesList = files.map(f => `'${f.name.replace(/'/g, "\\'")}'`).join(", ");
+}
+
+pre_operations {
+  ${when(incremental() && files.length > 0,
+    `DELETE FROM ${self()} WHERE file_name IN (${fileNamesList})`,
+    `SELECT 1`
+  )}
 }
 
 SELECT
@@ -58,12 +75,15 @@ SELECT
   roi_estimado_anos,
   subvencion_publica_porc,
   indice_impacto_ambiental_1_10,
+  file_id,
+  file_name,
   _source_file_id,
   _source_file_name,
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_medioambiente")}
+${when(incremental() && files.length === 0, `WHERE FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_proyecto
   ORDER BY fecha_registro DESC, _dw_loaded_at DESC

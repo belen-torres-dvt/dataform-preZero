@@ -24,6 +24,8 @@ config {
     roi_estimado_anos: "Plazo estimado de recuperación de la inversión (años)",
     subvencion_publica_porc: "Porcentaje de subvención pública sobre el coste",
     indice_impacto_ambiental_1_10: "Índice de impacto ambiental (escala 1 a 10)",
+    file_id: docs.columns.file_id,
+    file_name: docs.columns.file_name,
     _source_file_id: docs.columns._source_file_id,
     _source_file_name: docs.columns._source_file_name,
     _dw_loaded_at: docs.columns._dw_loaded_at,

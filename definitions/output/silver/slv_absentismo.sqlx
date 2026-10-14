@@ -1,8 +1,11 @@
 config {
-  type: "table",
+  type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   tags: ["absentismo", "silver"],
   description: "Capa Silver: Bajas y ausencias de personal consolidadas, deduplicadas y con surrogate key",
+  bigquery: {
+    clusterBy: ["file_name"]
+  },
   columns: {
     absentismo_sk: "Surrogate Key determinista SHA256 (id_empleado + fecha_inicio + motivo_baja)",
     id_empleado: "Identificador del empleado",
@@ -12,6 +15,8 @@ config {
     horas_ausencia: "Total de horas de ausencia laboral",
     fecha_inicio: "Fecha de inicio de la baja",
     fecha_fin: "Fecha de finalización de la baja",
+    file_id: docs.columns.file_id,
+    file_name: docs.columns.file_name,
     _source_file_id: docs.columns._source_file_id,
     _source_file_name: docs.columns._source_file_name,
     _dw_loaded_at: docs.columns._dw_loaded_at,
@@ -23,6 +28,18 @@ config {
   }
 }
 
+js {
+  const files = helpers.getFilesForTag("absentismo");
+  const fileNamesList = files.map(f => `'${f.name.replace(/'/g, "\\'")}'`).join(", ");
+}
+
+pre_operations {
+  ${when(incremental() && files.length > 0,
+    `DELETE FROM ${self()} WHERE file_name IN (${fileNamesList})`,
+    `SELECT 1`
+  )}
+}
+
 SELECT
   ${helpers.surrogateKey(["id_empleado", "fecha_inicio", "motivo_baja"])} AS absentismo_sk,
   id_empleado,
@@ -32,12 +49,15 @@ SELECT
   COALESCE(horas_ausencia, dias_ausencia * 8, 0) AS horas_ausencia,
   fecha_inicio,
   fecha_fin,
+  file_id,
+  file_name,
   _source_file_id,
   _source_file_name,
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_absentismo")}
+${when(incremental() && files.length === 0, `WHERE FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_empleado, fecha_inicio, motivo_baja 
   ORDER BY _dw_loaded_at DESC

@@ -1,8 +1,11 @@
 config {
-  type: "table",
+  type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   tags: ["prezero", "silver"],
   description: "Capa Silver: Registros de PreZero limpios, deduplicados y con surrogate key determinista",
+  bigquery: {
+    clusterBy: ["file_name"]
+  },
   columns: {
     prezero_sk: "Surrogate Key determinista SHA256 (id_registro + fecha_operacion)",
     id_registro: "Identificador del registro de pesaje",
@@ -11,6 +14,8 @@ config {
     peso_neto_kg: "Peso neto en kilogramos verificado",
     fecha_operacion: "Fecha de la operación",
     fecha_hora_pesaje: "Timestamp del pesaje",
+    file_id: docs.columns.file_id,
+    file_name: docs.columns.file_name,
     _source_file_id: docs.columns._source_file_id,
     _source_file_name: docs.columns._source_file_name,
     _dw_loaded_at: docs.columns._dw_loaded_at,
@@ -22,6 +27,18 @@ config {
   }
 }
 
+js {
+  const files = helpers.getFilesForTag("prezero");
+  const fileNamesList = files.map(f => `'${f.name.replace(/'/g, "\\'")}'`).join(", ");
+}
+
+pre_operations {
+  ${when(incremental() && files.length > 0,
+    `DELETE FROM ${self()} WHERE file_name IN (${fileNamesList})`,
+    `SELECT 1`
+  )}
+}
+
 SELECT
   ${helpers.surrogateKey(["id_registro", "fecha_operacion"])} AS prezero_sk,
   id_registro,
@@ -30,12 +47,15 @@ SELECT
   COALESCE(peso_neto_kg, 0) AS peso_neto_kg,
   fecha_operacion,
   fecha_hora_pesaje,
+  file_id,
+  file_name,
   _source_file_id,
   _source_file_name,
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_prezero")}
+${when(incremental() && files.length === 0, `WHERE FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_registro, fecha_operacion 
   ORDER BY fecha_hora_pesaje DESC, _dw_loaded_at DESC
