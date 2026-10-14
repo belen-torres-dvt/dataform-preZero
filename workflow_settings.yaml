@@ -17,6 +17,8 @@ vars:
   drive_file_name: ""
   drive_file_type: "CSV"
   sheet_skip_leading_rows: "1"
+  field_delimiter: ";"
+
 
   # Nombres de datasets según entorno Sandbox
   drive_dataset: "bq_drive_euw1"

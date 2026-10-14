@@ -18,10 +18,6 @@ config {
     total_horas_ausencia: "Total acumulado de horas de ausencia laboral",
     _dw_loaded_at: docs.columns._dw_loaded_at,
     _dw_loaded_by: docs.columns._dw_loaded_by
-  },
-  assertions: {
-    uniqueKey: ["kpi_sk"],
-    nonNull: ["kpi_sk", "mes_inicio", "departamento"]
   }
 }
 

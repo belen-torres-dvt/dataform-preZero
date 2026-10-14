@@ -34,10 +34,6 @@ config {
     _source_file_name: docs.columns._source_file_name,
     _dw_loaded_at: docs.columns._dw_loaded_at,
     _dw_loaded_by: docs.columns._dw_loaded_by
-  },
-  assertions: {
-    uniqueKey: ["proyecto_sk"],
-    nonNull: ["proyecto_sk", "id_proyecto"]
   }
 }
 

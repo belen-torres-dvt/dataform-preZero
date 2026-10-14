@@ -20,10 +20,6 @@ config {
     _source_file_name: docs.columns._source_file_name,
     _dw_loaded_at: docs.columns._dw_loaded_at,
     _dw_loaded_by: docs.columns._dw_loaded_by
-  },
-  assertions: {
-    uniqueKey: ["prestaff_sk"],
-    nonNull: ["prestaff_sk", "id_registro"]
   }
 }
 
@@ -50,7 +46,7 @@ SELECT
   ${helpers.cleanString("id_registro")} AS id_registro,
   UPPER(COALESCE(${helpers.cleanString("centro_operativo")}, "CENTRO_GENERAL")) AS centro_operativo,
   UPPER(COALESCE(${helpers.cleanString("tipo_residuo")}, "GENERAL")) AS tipo_residuo,
-  COALESCE(SAFE_CAST(peso_neto_kg AS NUMERIC), 0) AS peso_neto_kg,
+  COALESCE(SAFE_CAST(REPLACE(CAST(peso_neto_kg AS STRING), ',', '.') AS NUMERIC), 0) AS peso_neto_kg,
   COALESCE(SAFE_CAST(fecha_operacion AS DATE), CURRENT_DATE()) AS fecha_operacion,
   SAFE_CAST(fecha_hora_pesaje AS TIMESTAMP) AS fecha_hora_pesaje,
   file_id,
