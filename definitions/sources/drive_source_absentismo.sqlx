@@ -11,22 +11,7 @@ js {
   const files = helpers.getFilesForTag("absentismo");
 }
 
--- 1. Si existía una vista previa con este nombre, eliminarla para permitir crear la TABLA EXTERNA sin conflictos de tipo
-BEGIN
-  DECLARE obj_type STRING;
-  SET obj_type = (
-    SELECT table_type 
-    FROM ${constants.SCHEMAS.RAW}.INFORMATION_SCHEMA.TABLES
-    WHERE table_name = '${self().name}'
-  );
-  IF obj_type = 'VIEW' THEN
-    DROP VIEW IF EXISTS ${self()};
-  END IF;
-EXCEPTION WHEN ERROR THEN
-  NULL;
-END;
-
--- 2. Crear directamente la tabla externa en bq_drive_euw1 (sin vistas intermedias)
+-- 1. Crear directamente la tabla externa en bq_drive_euw1
 ${files.length > 0 ? files.map((file, idx) => `
   CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `${constants.SCHEMAS.RAW}.ext_absentismo_${idx}`}
   OPTIONS (
