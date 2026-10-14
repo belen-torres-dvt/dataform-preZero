@@ -2,7 +2,7 @@ config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   tags: ["medioambiente", "silver"],
-  description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, deduplicados y con clave subrogada (Histórico)",
+  description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, tipados, deduplicados y con clave subrogada (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
   },
@@ -41,42 +41,29 @@ config {
   }
 }
 
-pre_operations {
-  ${when(incremental(), `
-    ALTER TABLE ${self()}
-    ADD COLUMN IF NOT EXISTS file_id STRING,
-    ADD COLUMN IF NOT EXISTS file_name STRING,
-    ADD COLUMN IF NOT EXISTS _source_file_id STRING,
-    ADD COLUMN IF NOT EXISTS _source_file_name STRING;
-  `)}
-  ${when(incremental() && helpers.hasFilesForTag("medioambiente"),
-    `DELETE FROM ${self()} WHERE file_name IN (${helpers.getFileNamesSqlList("medioambiente")});`,
-    `SELECT 1;`
-  )}
-}
 
 SELECT
   ${helpers.surrogateKey(["id_proyecto"])} AS proyecto_sk,
-  id_proyecto,
-  fecha_registro,
-  nombre_solucion,
-  categoria_solucion,
-  pais,
-  region_geografica,
-  empresa_proveedora,
-  sector_cliente,
-  COALESCE(coste_implementacion_eur, 0) AS coste_implementacion_eur,
-  COALESCE(ahorro_anual_estimado_eur, 0) AS ahorro_anual_estimado_eur,
-  COALESCE(reduccion_co2_ton_ano, 0) AS reduccion_co2_ton_ano,
-  COALESCE(volumen_agua_reciclada_m3, 0) AS volumen_agua_reciclada_m3,
-  COALESCE(energia_renovable_generada_mwh, 0) AS energia_renovable_generada_mwh,
-  COALESCE(residuos_desviados_vertedero_ton, 0) AS residuos_desviados_vertedero_ton,
-  estado_proyecto,
-  certificacion_ambiental,
-  huella_carbono_inicial_ton,
-  roi_estimado_anos,
-  subvencion_publica_porc,
-  indice_impacto_ambiental_1_10,
+  ${helpers.cleanString("id_proyecto")} AS id_proyecto,
+  SAFE_CAST(fecha_registro AS DATE) AS fecha_registro,
+  ${helpers.cleanString("nombre_solucion")} AS nombre_solucion,
+  UPPER(${helpers.cleanString("categoria_solucion")}) AS categoria_solucion,
+  ${helpers.cleanString("pais")} AS pais,
+  ${helpers.cleanString("region_geografica")} AS region_geografica,
+  ${helpers.cleanString("empresa_proveedora")} AS empresa_proveedora,
+  ${helpers.cleanString("sector_cliente")} AS sector_cliente,
+  COALESCE(SAFE_CAST(coste_implementacion_eur AS NUMERIC), 0) AS coste_implementacion_eur,
+  COALESCE(SAFE_CAST(ahorro_anual_estimado_eur AS NUMERIC), 0) AS ahorro_anual_estimado_eur,
+  COALESCE(SAFE_CAST(reduccion_co2_ton_ano AS NUMERIC), 0) AS reduccion_co2_ton_ano,
+  COALESCE(SAFE_CAST(volumen_agua_reciclada_m3 AS NUMERIC), 0) AS volumen_agua_reciclada_m3,
+  COALESCE(SAFE_CAST(energia_renovable_generada_mwh AS NUMERIC), 0) AS energia_renovable_generada_mwh,
+  COALESCE(SAFE_CAST(residuos_desviados_vertedero_ton AS NUMERIC), 0) AS residuos_desviados_vertedero_ton,
+  UPPER(${helpers.cleanString("estado_proyecto")}) AS estado_proyecto,
+  ${helpers.cleanString("certificacion_ambiental")} AS certificacion_ambiental,
+  SAFE_CAST(huella_carbono_inicial_ton AS NUMERIC) AS huella_carbono_inicial_ton,
+  SAFE_CAST(roi_estimado_anos AS NUMERIC) AS roi_estimado_anos,
+  SAFE_CAST(subvencion_publica_porc AS NUMERIC) AS subvencion_publica_porc,
+  SAFE_CAST(indice_impacto_ambiental_1_10 AS NUMERIC) AS indice_impacto_ambiental_1_10,
   file_id,
   file_name,
   _source_file_id,
@@ -85,8 +72,10 @@ SELECT
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_medioambiente")}
-${when(incremental() && helpers.hasFilesForTag("medioambiente"), `WHERE file_name IN (${helpers.getFileNamesSqlList("medioambiente")})`)}
-${when(incremental() && !helpers.hasFilesForTag("medioambiente"), `WHERE FALSE`)}
+WHERE
+  ${helpers.cleanString("id_proyecto")} IS NOT NULL
+  ${when(incremental() && helpers.hasFilesForTag("medioambiente"), `AND file_name IN (${helpers.getFileNamesSqlList("medioambiente")})`)}
+  ${when(incremental() && !helpers.hasFilesForTag("medioambiente"), `AND FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_proyecto
   ORDER BY fecha_registro DESC, _dw_loaded_at DESC

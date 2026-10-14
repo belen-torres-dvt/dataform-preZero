@@ -2,7 +2,7 @@ config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   tags: ["absentismo", "silver"],
-  description: "Capa Silver: Bajas y ausencias de personal consolidadas, deduplicadas y con surrogate key (Histórico)",
+  description: "Capa Silver: Bajas y ausencias de personal consolidadas, tipadas, deduplicadas y con surrogate key (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
   },
@@ -28,29 +28,16 @@ config {
   }
 }
 
-pre_operations {
-  ${when(incremental(), `
-    ALTER TABLE ${self()}
-    ADD COLUMN IF NOT EXISTS file_id STRING,
-    ADD COLUMN IF NOT EXISTS file_name STRING,
-    ADD COLUMN IF NOT EXISTS _source_file_id STRING,
-    ADD COLUMN IF NOT EXISTS _source_file_name STRING;
-  `)}
-  ${when(incremental() && helpers.hasFilesForTag("absentismo"),
-    `DELETE FROM ${self()} WHERE file_name IN (${helpers.getFileNamesSqlList("absentismo")});`,
-    `SELECT 1;`
-  )}
-}
 
 SELECT
   ${helpers.surrogateKey(["id_empleado", "fecha_inicio", "motivo_baja"])} AS absentismo_sk,
-  id_empleado,
-  departamento,
-  motivo_baja,
-  COALESCE(dias_ausencia, 0) AS dias_ausencia,
-  COALESCE(horas_ausencia, dias_ausencia * 8, 0) AS horas_ausencia,
-  fecha_inicio,
-  fecha_fin,
+  ${helpers.cleanString("id_empleado")} AS id_empleado,
+  UPPER(COALESCE(${helpers.cleanString("departamento")}, "NO_ASIGNADO")) AS departamento,
+  UPPER(COALESCE(${helpers.cleanString("motivo_baja")}, "NO_ESPECIFICADO")) AS motivo_baja,
+  COALESCE(SAFE_CAST(dias_ausencia AS NUMERIC), 0) AS dias_ausencia,
+  COALESCE(SAFE_CAST(horas_ausencia AS NUMERIC), SAFE_CAST(dias_ausencia AS NUMERIC) * 8, 0) AS horas_ausencia,
+  SAFE_CAST(fecha_inicio AS DATE) AS fecha_inicio,
+  SAFE_CAST(fecha_fin AS DATE) AS fecha_fin,
   file_id,
   file_name,
   _source_file_id,
@@ -59,8 +46,10 @@ SELECT
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_absentismo")}
-${when(incremental() && helpers.hasFilesForTag("absentismo"), `WHERE file_name IN (${helpers.getFileNamesSqlList("absentismo")})`)}
-${when(incremental() && !helpers.hasFilesForTag("absentismo"), `WHERE FALSE`)}
+WHERE
+  ${helpers.cleanString("id_empleado")} IS NOT NULL
+  ${when(incremental() && helpers.hasFilesForTag("absentismo"), `AND file_name IN (${helpers.getFileNamesSqlList("absentismo")})`)}
+  ${when(incremental() && !helpers.hasFilesForTag("absentismo"), `AND FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_empleado, fecha_inicio, motivo_baja 
   ORDER BY _dw_loaded_at DESC

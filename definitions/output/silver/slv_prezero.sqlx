@@ -2,7 +2,7 @@ config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   tags: ["prezero", "silver"],
-  description: "Capa Silver: Registros de PreZero limpios, deduplicados y con surrogate key determinista (Histórico)",
+  description: "Capa Silver: Registros de PreZero limpios, tipados, deduplicados y con surrogate key determinista (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
   },
@@ -27,28 +27,15 @@ config {
   }
 }
 
-pre_operations {
-  ${when(incremental(), `
-    ALTER TABLE ${self()}
-    ADD COLUMN IF NOT EXISTS file_id STRING,
-    ADD COLUMN IF NOT EXISTS file_name STRING,
-    ADD COLUMN IF NOT EXISTS _source_file_id STRING,
-    ADD COLUMN IF NOT EXISTS _source_file_name STRING;
-  `)}
-  ${when(incremental() && helpers.hasFilesForTag("prezero"),
-    `DELETE FROM ${self()} WHERE file_name IN (${helpers.getFileNamesSqlList("prezero")});`,
-    `SELECT 1;`
-  )}
-}
 
 SELECT
   ${helpers.surrogateKey(["id_registro", "fecha_operacion"])} AS prezero_sk,
-  id_registro,
-  centro_operativo,
-  tipo_residuo,
-  COALESCE(peso_neto_kg, 0) AS peso_neto_kg,
-  fecha_operacion,
-  fecha_hora_pesaje,
+  ${helpers.cleanString("id_registro")} AS id_registro,
+  UPPER(COALESCE(${helpers.cleanString("centro_operativo")}, "CENTRO_GENERAL")) AS centro_operativo,
+  UPPER(COALESCE(${helpers.cleanString("tipo_residuo")}, "GENERAL")) AS tipo_residuo,
+  COALESCE(SAFE_CAST(peso_neto_kg AS NUMERIC), 0) AS peso_neto_kg,
+  COALESCE(SAFE_CAST(fecha_operacion AS DATE), CURRENT_DATE()) AS fecha_operacion,
+  SAFE_CAST(fecha_hora_pesaje AS TIMESTAMP) AS fecha_hora_pesaje,
   file_id,
   file_name,
   _source_file_id,
@@ -57,8 +44,10 @@ SELECT
   SESSION_USER() AS _dw_loaded_by
 FROM
   ${ref("brz_prezero")}
-${when(incremental() && helpers.hasFilesForTag("prezero"), `WHERE file_name IN (${helpers.getFileNamesSqlList("prezero")})`)}
-${when(incremental() && !helpers.hasFilesForTag("prezero"), `WHERE FALSE`)}
+WHERE
+  ${helpers.cleanString("id_registro")} IS NOT NULL
+  ${when(incremental() && helpers.hasFilesForTag("prezero"), `AND file_name IN (${helpers.getFileNamesSqlList("prezero")})`)}
+  ${when(incremental() && !helpers.hasFilesForTag("prezero"), `AND FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY id_registro, fecha_operacion 
   ORDER BY fecha_hora_pesaje DESC, _dw_loaded_at DESC

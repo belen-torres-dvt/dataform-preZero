@@ -2,68 +2,21 @@ config {
   type: "table",
   schema: constants.SCHEMAS.BRONZE,
   tags: ["medioambiente", "bronze"],
-  description: "Capa Bronze: Tipado inicial y normalización de proyectos de Soluciones Medioambientales (Tabla Nativa)",
+  description: "Capa Bronze: Ingesta en bruto de Soluciones Medioambientales en tabla nativa BigQuery",
   bigquery: {
     clusterBy: ["file_name"]
-  },
-  columns: {
-    id_proyecto: "Identificador del proyecto medioambiental",
-    fecha_registro: "Fecha de registro del proyecto",
-    nombre_solucion: "Título o descripción de la solución",
-    categoria_solucion: "Categoría de la solución implementada",
-    pais: "País de ejecución del proyecto",
-    region_geografica: "Región geográfica del proyecto",
-    empresa_proveedora: "Empresa tecnológica o proveedora de la solución",
-    sector_cliente: "Sector económico del cliente final",
-    coste_implementacion_eur: "Coste de implantación en Euros",
-    ahorro_anual_estimado_eur: "Ahorro anual proyectado en Euros",
-    reduccion_co2_ton_ano: "Toneladas de CO2 reducidas anualmente",
-    volumen_agua_reciclada_m3: "Metros cúbicos de agua reciclada",
-    energia_renovable_generada_mwh: "Megavatios hora generados de origen renovable",
-    residuos_desviados_vertedero_ton: "Toneladas de residuos desviados de vertedero",
-    estado_proyecto: "Estado del proyecto (Planificación, Operativo, etc.)",
-    certificacion_ambiental: "Estándar o certificación (LEED, BREEAM, ISO)",
-    huella_carbono_inicial_ton: "Huella de carbono previa en toneladas",
-    roi_estimado_anos: "Plazo estimado de recuperación de la inversión (años)",
-    subvencion_publica_porc: "Porcentaje de subvención pública sobre el coste",
-    indice_impacto_ambiental_1_10: "Índice de impacto ambiental (escala 1 a 10)",
-    file_id: docs.columns.file_id,
-    file_name: docs.columns.file_name,
-    _source_file_id: docs.columns._source_file_id,
-    _source_file_name: docs.columns._source_file_name,
-    _dw_loaded_at: docs.columns._dw_loaded_at,
-    _dw_loaded_by: docs.columns._dw_loaded_by
   }
 }
 
 js {
   const files = helpers.getFilesForTag("medioambiente");
 
-  function selectFromExternal(tableRef, file) {
+  function selectRawFromExternal(tableRef, file) {
     const fId = file ? file.id : "";
     const fName = file ? file.name : "";
     return `
       SELECT
-        ${helpers.cleanString("id_proyecto")} AS id_proyecto,
-        SAFE_CAST(fecha_registro AS DATE) AS fecha_registro,
-        ${helpers.cleanString("nombre_solucion")} AS nombre_solucion,
-        UPPER(${helpers.cleanString("categoria_solucion")}) AS categoria_solucion,
-        ${helpers.cleanString("pais")} AS pais,
-        ${helpers.cleanString("region_geografica")} AS region_geografica,
-        ${helpers.cleanString("empresa_proveedora")} AS empresa_proveedora,
-        ${helpers.cleanString("sector_cliente")} AS sector_cliente,
-        SAFE_CAST(coste_implementacion_eur AS NUMERIC) AS coste_implementacion_eur,
-        SAFE_CAST(ahorro_anual_estimado_eur AS NUMERIC) AS ahorro_anual_estimado_eur,
-        SAFE_CAST(reduccion_co2_ton_ano AS NUMERIC) AS reduccion_co2_ton_ano,
-        SAFE_CAST(volumen_agua_reciclada_m3 AS NUMERIC) AS volumen_agua_reciclada_m3,
-        SAFE_CAST(energia_renovable_generada_mwh AS NUMERIC) AS energia_renovable_generada_mwh,
-        SAFE_CAST(residuos_desviados_vertedero_ton AS NUMERIC) AS residuos_desviados_vertedero_ton,
-        UPPER(${helpers.cleanString("estado_proyecto")}) AS estado_proyecto,
-        ${helpers.cleanString("certificacion_ambiental")} AS certificacion_ambiental,
-        SAFE_CAST(huella_carbono_inicial_ton AS NUMERIC) AS huella_carbono_inicial_ton,
-        SAFE_CAST(roi_estimado_anos AS NUMERIC) AS roi_estimado_anos,
-        SAFE_CAST(subvencion_publica_porc AS NUMERIC) AS subvencion_publica_porc,
-        SAFE_CAST(indice_impacto_ambiental_1_10 AS NUMERIC) AS indice_impacto_ambiental_1_10,
+        *,
         '${fId}' AS file_id,
         '${fName}' AS file_name,
         '${fId}' AS _source_file_id,
@@ -72,14 +25,13 @@ js {
         SESSION_USER() AS _dw_loaded_by
       FROM
         ${tableRef}
-      WHERE
-        ${helpers.cleanString("id_proyecto")} IS NOT NULL
     `;
   }
 }
 
-${files.length <= 1 ? selectFromExternal(ref("drive_source_medioambiente"), files[0]) :
-  files.map((file, idx) => selectFromExternal(
+
+${files.length <= 1 ? selectRawFromExternal(ref("drive_source_medioambiente"), files[0]) :
+  files.map((file, idx) => selectRawFromExternal(
     idx === 0 ? ref("drive_source_medioambiente") : `${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}`,
     file
   )).join("\nUNION ALL\n")

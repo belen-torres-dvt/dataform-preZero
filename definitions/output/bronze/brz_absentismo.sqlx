@@ -2,42 +2,21 @@ config {
   type: "table",
   schema: constants.SCHEMAS.BRONZE,
   tags: ["absentismo", "bronze"],
-  description: "Capa Bronze: Tipado inicial y saneamiento de datos de absentismo (Tabla Nativa)",
+  description: "Capa Bronze: Ingesta en bruto de datos de absentismo en tabla nativa BigQuery",
   bigquery: {
     clusterBy: ["file_name"]
-  },
-  columns: {
-    id_empleado: "Identificador unívoco del trabajador",
-    departamento: "Área organizativa o departamento del empleado",
-    motivo_baja: "Causa o motivo de la ausencia laboral",
-    dias_ausencia: "Número de días naturales o laborables de baja",
-    horas_ausencia: "Total de horas de trabajo no realizadas",
-    fecha_inicio: "Fecha de inicio del periodo de baja",
-    fecha_fin: "Fecha de finalización o alta médica",
-    file_id: docs.columns.file_id,
-    file_name: docs.columns.file_name,
-    _source_file_id: docs.columns._source_file_id,
-    _source_file_name: docs.columns._source_file_name,
-    _dw_loaded_at: docs.columns._dw_loaded_at,
-    _dw_loaded_by: docs.columns._dw_loaded_by
   }
 }
 
 js {
   const files = helpers.getFilesForTag("absentismo");
 
-  function selectFromExternal(tableRef, file) {
+  function selectRawFromExternal(tableRef, file) {
     const fId = file ? file.id : "";
     const fName = file ? file.name : "";
     return `
       SELECT
-        ${helpers.cleanString("id_empleado")} AS id_empleado,
-        UPPER(COALESCE(${helpers.cleanString("departamento")}, "NO_ASIGNADO")) AS departamento,
-        UPPER(COALESCE(${helpers.cleanString("motivo_baja")}, "NO_ESPECIFICADO")) AS motivo_baja,
-        SAFE_CAST(dias_ausencia AS NUMERIC) AS dias_ausencia,
-        SAFE_CAST(horas_ausencia AS NUMERIC) AS horas_ausencia,
-        SAFE_CAST(fecha_inicio AS DATE) AS fecha_inicio,
-        SAFE_CAST(fecha_fin AS DATE) AS fecha_fin,
+        *,
         '${fId}' AS file_id,
         '${fName}' AS file_name,
         '${fId}' AS _source_file_id,
@@ -46,14 +25,13 @@ js {
         SESSION_USER() AS _dw_loaded_by
       FROM
         ${tableRef}
-      WHERE
-        ${helpers.cleanString("id_empleado")} IS NOT NULL
     `;
   }
 }
 
-${files.length <= 1 ? selectFromExternal(ref("drive_source_absentismo"), files[0]) :
-  files.map((file, idx) => selectFromExternal(
+
+${files.length <= 1 ? selectRawFromExternal(ref("drive_source_absentismo"), files[0]) :
+  files.map((file, idx) => selectRawFromExternal(
     idx === 0 ? ref("drive_source_absentismo") : `${constants.SCHEMAS.RAW}.ext_absentismo_${idx}`,
     file
   )).join("\nUNION ALL\n")
