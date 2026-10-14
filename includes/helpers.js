@@ -176,6 +176,21 @@ function hasFilesForTag(targetTag) {
   return getFilesForTag(targetTag).length > 0;
 }
 
+/**
+ * Extrae el sufijo de año-mes o identificador del nombre de archivo (ej: prestaff_202601.csv -> 202601).
+ *
+ * @param {string} fileName - Nombre del fichero
+ * @param {number|string} fallback - Valor por defecto si no encuentra patrón
+ * @returns {string} Sufijo limpio para nombres de tablas
+ */
+function getFileMonthSuffix(fileName, fallback = "0") {
+  if (!fileName) return String(fallback);
+  const match = fileName.match(/(?:[a-zA-Z_-]+)?(\d{6}|\d{4})/);
+  if (match) return match[1];
+  const clean = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_");
+  return clean || String(fallback);
+}
+
 module.exports = {
   surrogateKey,
   auditColumns,
@@ -183,5 +198,7 @@ module.exports = {
   driveUri,
   getFilesForTag,
   getFileNamesSqlList,
-  hasFilesForTag
+  hasFilesForTag,
+  getFileMonthSuffix
 };
+

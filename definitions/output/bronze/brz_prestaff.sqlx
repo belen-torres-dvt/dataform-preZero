@@ -1,12 +1,36 @@
 config {
-  type: "table",
+  type: "operations",
+  hasOutput: true,
   schema: constants.SCHEMAS.BRONZE,
+  name: "brz_prestaff",
   tags: ["prestaff", "bronze"],
-  description: "Capa Bronze: Ingesta en bruto de registros de pesajes PreStaff en tabla nativa BigQuery"
+  description: "Capa Bronze: Tablas nativas 1:1 en BigQuery por cada fichero mensual de PreStaff (sin transformaciones ni unions)"
 }
 
+js {
+  const files = helpers.getFilesForTag("prestaff");
+}
+
+-- 1. Crear tabla nativa principal en Bronze (1:1 con la tabla externa de Drive, sin UNION ni transformaciones)
+CREATE OR REPLACE TABLE ${self()} AS
 SELECT
   *,
   ${helpers.auditColumns("prestaff")}
 FROM
-  ${ref("drive_source_prestaff")}
+  ${ref("drive_source_prestaff")};
+
+-- 2. Crear tablas nativas 1:1 para los restantes ficheros mensuales si existen
+${files.length > 1 ? files.slice(1).map((file, idx) => {
+  const suffix = helpers.getFileMonthSuffix(file.name, idx + 1);
+  const extTable = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_prestaff_${suffix}\``;
+  const brzTable = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_prestaff_${suffix}\``;
+  return `
+    CREATE OR REPLACE TABLE ${brzTable} AS
+    SELECT
+      *,
+      ${helpers.auditColumns("prestaff")}
+    FROM
+      ${extTable};
+  `;
+}).join("\n") : ""}
+

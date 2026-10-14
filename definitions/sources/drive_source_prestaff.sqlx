@@ -4,16 +4,16 @@ config {
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_prestaff",
   tags: ["prestaff", "source"],
-  description: "Tabla externa BigQuery en bq_drive_euw1 apuntando a los datos de PreStaff en Google Drive"
+  description: "Tablas externas BigQuery en bq_drive_euw1 apuntando a los CSVs mensuales de PreStaff en Google Drive"
 }
 
 js {
   const files = helpers.getFilesForTag("prestaff");
 }
 
--- 1. Crear directamente la tabla externa en bq_drive_euw1
+-- 1. Crear tablas externas en bq_drive_euw1 por cada fichero mensual prestaff_[añomes]
 ${files.length > 0 ? files.map((file, idx) => `
-  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `${constants.SCHEMAS.RAW}.ext_prestaff_${idx}`}
+  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_prestaff_${helpers.getFileMonthSuffix(file.name, idx)}\``}
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],
@@ -22,3 +22,4 @@ ${files.length > 0 ? files.map((file, idx) => `
 `).join("\n") : `
   SELECT 1;
 `}
+

@@ -28,6 +28,23 @@ config {
 }
 
 
+js {
+  const files = helpers.getFilesForTag("prestaff");
+
+  function getBronzeSources() {
+    if (files.length <= 1) {
+      return `SELECT * FROM ${ref("brz_prestaff")}`;
+    }
+    return files.map((file, idx) => {
+      const suffix = helpers.getFileMonthSuffix(file.name, idx);
+      const tableRef = idx === 0
+        ? ref("brz_prestaff")
+        : `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_prestaff_${suffix}\``;
+      return `SELECT * FROM ${tableRef}`;
+    }).join("\n  UNION ALL\n  ");
+  }
+}
+
 SELECT
   ${helpers.surrogateKey(["id_registro", "fecha_operacion"])} AS prestaff_sk,
   ${helpers.cleanString("id_registro")} AS id_registro,
@@ -42,8 +59,9 @@ SELECT
   _source_file_name,
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
-FROM
-  ${ref("brz_prestaff")}
+FROM (
+  ${getBronzeSources()}
+)
 WHERE
   ${helpers.cleanString("id_registro")} IS NOT NULL
   ${when(incremental() && helpers.hasFilesForTag("prestaff"), `AND file_name IN (${helpers.getFileNamesSqlList("prestaff")})`)}
