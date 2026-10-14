@@ -3,6 +3,7 @@ config {
   hasOutput: true,
   schema: constants.SCHEMAS.BRONZE,
   name: "brz_prestaff",
+  dependencies: ["drive_source_prestaff"],
   tags: ["prestaff", "bronze"],
   description: "Capa Bronze: Tablas nativas 1:1 en BigQuery por cada fichero mensual de PreStaff (sin transformaciones ni unions)"
 }
@@ -11,18 +12,10 @@ js {
   const files = helpers.getFilesForTag("prestaff");
 }
 
--- 1. Crear tabla nativa principal en Bronze (1:1 con la tabla externa de Drive, sin UNION ni transformaciones)
-CREATE OR REPLACE TABLE ${self()} AS
-SELECT
-  *,
-  ${helpers.auditColumns("prestaff")}
-FROM
-  ${ref("drive_source_prestaff")};
-
--- 2. Crear tablas nativas 1:1 para los restantes ficheros mensuales si existen
-${files.length > 1 ? files.slice(1).map((file, idx) => {
-  const suffix = helpers.getFileMonthSuffix(file.name, idx + 1);
-  const extTable = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_prestaff_${suffix}\``;
+-- 1. Crear tablas nativas 1:1 en Bronze por cada fichero mensual de PreStaff (sin UNION ni transformaciones)
+${files.length > 0 ? files.map((file, idx) => {
+  const suffix = helpers.getFileMonthSuffix(file.name, idx);
+  const extTable = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_prestaff_${suffix}\``;
   const brzTable = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_prestaff_${suffix}\``;
   return `
     CREATE OR REPLACE TABLE ${brzTable} AS
@@ -32,5 +25,13 @@ ${files.length > 1 ? files.slice(1).map((file, idx) => {
     FROM
       ${extTable};
   `;
-}).join("\n") : ""}
+}).join("\n") : `
+  SELECT 1;
+`}
+
+-- 2. Mantener la tabla principal brz_prestaff (${self()}) sincronizada con el fichero actual
+${files.length > 0 ? `
+  CREATE OR REPLACE TABLE ${self()} AS
+  SELECT * FROM \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_prestaff_${helpers.getFileMonthSuffix(files[0].name, 0)}\`;
+` : ""}
 

@@ -11,19 +11,22 @@ js {
   const files = helpers.getFilesForTag("prestaff");
 }
 
--- 1. Crear tablas externas en bq_drive_euw1 por cada fichero mensual prestaff_[añomes]
-${files.length > 0 ? files.map((file, idx) => `
-  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_prestaff_${helpers.getFileMonthSuffix(file.name, idx)}\``}
-  OPTIONS (
-    format = "CSV",
-    uris = ["https://drive.google.com/open?id=${file.id}"],
-    skip_leading_rows = 1,
-    field_delimiter = "${dataform.projectConfig.vars.field_delimiter || ";"}",
-    ignore_unknown_values = true,
-    allow_jagged_rows = true,
-    allow_quoted_newlines = true
-  );
-`).join("\n") : `
+-- 1. Crear tablas externas en bq_drive_euw1 con nomenclatura homogénea: drive_source_prestaff_{sufijoFichero}
+${files.length > 0 ? files.map((file, idx) => {
+  const suffix = helpers.getFileMonthSuffix(file.name, idx);
+  return `
+    CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_prestaff_${suffix}\`
+    OPTIONS (
+      format = "CSV",
+      uris = ["https://drive.google.com/open?id=${file.id}"],
+      skip_leading_rows = 1,
+      field_delimiter = "${dataform.projectConfig.vars.field_delimiter || ";"}",
+      ignore_unknown_values = true,
+      allow_jagged_rows = true,
+      allow_quoted_newlines = true
+    );
+  `;
+}).join("\n") : `
   SELECT 1;
 `}
 

@@ -13,7 +13,7 @@ js {
 
 -- 1. Crear directamente la tabla externa en bq_drive_euw1
 ${files.length > 0 ? files.map((file, idx) => `
-  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}`}
+  CREATE OR REPLACE EXTERNAL TABLE ${idx === 0 ? self() : `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_medioambiente_${helpers.getFileMonthSuffix(file.name, idx)}\``}
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],

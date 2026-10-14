@@ -185,8 +185,8 @@ function hasFilesForTag(targetTag) {
  */
 function getFileMonthSuffix(fileName, fallback = "0") {
   if (!fileName) return String(fallback);
-  const match = fileName.match(/(?:[a-zA-Z_-]+)?(\d{6}|\d{4})/);
-  if (match) return match[1];
+  const match = fileName.match(/(\d{4}[-_]?\d{2}|\d{6}|\d{4})/);
+  if (match) return match[1].replace(/[-]/g, "_");
   const clean = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_");
   return clean || String(fallback);
 }
