@@ -77,7 +77,10 @@ function driveUri(fileId, fileType = "CSV") {
  * @returns {Array<{id: string, name: string}>} Lista de ficheros a compilar
  */
 function getFilesForTag(targetTag) {
-  const activeTag = dataform.projectConfig.vars.active_tag || "";
+  const activeTag = dataform.projectConfig.vars.active_tag ||
+                    dataform.projectConfig.vars.tag ||
+                    dataform.projectConfig.vars.tags ||
+                    "";
   if (activeTag && activeTag !== targetTag) {
     return [];
   }

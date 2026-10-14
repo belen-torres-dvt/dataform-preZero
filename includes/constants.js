@@ -6,7 +6,8 @@
 const PROJECT_ID = "belen-torres-sandbox1";
 
 const SCHEMAS = {
-  RAW: dataform.projectConfig.vars.raw_dataset || "bq_stg_euw1",
+  RAW: dataform.projectConfig.vars.drive_dataset || dataform.projectConfig.vars.raw_dataset || "bq_drive_euw1",
+  DRIVE: dataform.projectConfig.vars.drive_dataset || dataform.projectConfig.vars.raw_dataset || "bq_drive_euw1",
   BRONZE: dataform.projectConfig.vars.bronze_dataset || "bq_bronze_euw1",
   SILVER: dataform.projectConfig.vars.silver_dataset || "bq_silver_euw1",
   GOLD: dataform.projectConfig.vars.gold_dataset || "bq_gold_euw1",

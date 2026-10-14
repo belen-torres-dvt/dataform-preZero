@@ -11,7 +11,7 @@ js {
   const files = helpers.getFilesForTag("medioambiente");
 }
 
--- Crear una tabla externa en bq_stg_euw1 para cada fichero CSV que coincide con 'soluciones_medioambientales'
+-- Crear una tabla externa en bq_drive_euw1 para cada fichero CSV que coincide con 'soluciones_medioambientales'
 ${files.map((file, idx) => `
   CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}\`
   OPTIONS (

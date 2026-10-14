@@ -14,7 +14,7 @@ Arquitectura base de ingeniería de datos y modelado analítico en Google Cloud 
 ### Datasets por Capa (Arquitectura Medallion)
 | Capa | Dataset BigQuery | Descripción | Tipo de Objetos |
 | :--- | :--- | :--- | :--- |
-| **Raw / Ext. Tables** | `bq_stg_euw1` | Tablas externas para cada CSV de Drive y vistas unificadas | `EXTERNAL TABLE` / `VIEW` (DDL) |
+| **Drive / Ext. Tables** | `bq_drive_euw1` | Tablas externas para cada CSV de Drive y vistas unificadas | `EXTERNAL TABLE` / `VIEW` (DDL) |
 | **Bronze** | `bq_bronze_euw1` | Lectura 1:1, tipado inicial y captura de metadatos de fichero | `VIEW` |
 | **Silver** | `bq_silver_euw1` | Datos limpios, deduplicados con hash surrogate key SHA-256 | `TABLE` |
 | **Gold** | `bq_gold_euw1` | Modelos analíticos y KPIs agregados, particionados y clusterizados | `TABLE` |
@@ -56,7 +56,7 @@ flowchart TD
     end
 
     subgraph DF_PZ["🏭 Pipeline PreZero (Tag: prezero)"]
-        PZ_Raw["<b>Raw</b><br/>bq_stg_euw1.drive_source_prezero"]
+        PZ_Raw["<b>Drive</b><br/>bq_drive_euw1.drive_source_prezero"]
         PZ_Brz["<b>Bronze</b><br/>bq_bronze_euw1.brz_prezero"]
         PZ_Slv["<b>Silver</b><br/>bq_silver_euw1.slv_prezero"]
         PZ_Gld["<b>Gold</b><br/>bq_gold_euw1.gld_prezero"]
@@ -64,7 +64,7 @@ flowchart TD
     end
 
     subgraph DF_AB["👥 Pipeline Absentismo (Tag: absentismo)"]
-        AB_Raw["<b>Raw</b><br/>bq_stg_euw1.drive_source_absentismo"]
+        AB_Raw["<b>Drive</b><br/>bq_drive_euw1.drive_source_absentismo"]
         AB_Brz["<b>Bronze</b><br/>bq_bronze_euw1.brz_absentismo"]
         AB_Slv["<b>Silver</b><br/>bq_silver_euw1.slv_absentismo"]
         AB_Gld["<b>Gold</b><br/>bq_gold_euw1.gld_absentismo"]
@@ -72,7 +72,7 @@ flowchart TD
     end
 
     subgraph DF_MA["🌱 Pipeline Medioambiente (Tag: medioambiente)"]
-        MA_Raw["<b>Raw</b><br/>bq_stg_euw1.drive_source_medioambiente"]
+        MA_Raw["<b>Drive</b><br/>bq_drive_euw1.drive_source_medioambiente"]
         MA_Brz["<b>Bronze</b><br/>bq_bronze_euw1.brz_medioambiente"]
         MA_Slv["<b>Silver</b><br/>bq_silver_euw1.slv_medioambiente"]
         MA_Gld["<b>Gold</b><br/>bq_gold_euw1.gld_medioambiente"]
@@ -132,9 +132,6 @@ flowchart TD
 │       ├── assert_prezero_weights.sqlx         # Control de calidad: pesos netos no negativos (Tag: prezero)
 │       ├── assert_absentismo_days.sqlx         # Control de calidad: días de baja no negativos (Tag: absentismo)
 │       └── assert_medioambiente_metricas.sqlx  # Control de calidad: costes, CO2 e índice válidos (Tag: medioambiente)
-└── scripts/
-    └── apps_script/
-        └── trigger_dataform.js        # Script de Apps Script con mapeo por regex y llamada selectiva por Tag
 ```
 
 ---
@@ -143,18 +140,9 @@ flowchart TD
 
 Si en el futuro se añade un nuevo tipo de fichero (ejemplo: `facturacion_*.csv`):
 
-1. **Añadir la regla en Apps Script** ([`scripts/apps_script/trigger_dataform.js`](file:///Users/belen.torres.hontanilla/devoteam/dataform-preZero/scripts/apps_script/trigger_dataform.js)):
-   ```javascript
-   {
-     tag: "facturacion",
-     regex: /^facturacion/i,
-     name: "Facturación y Cobros"
-   }
-   ```
-2. **Crear los modelos SQLX** con el tag `tags: ["facturacion"]`:
+1. **Crear los modelos SQLX** con el tag `tags: ["facturacion"]`:
    * `definitions/sources/drive_source_facturacion.sqlx` (`helpers.getFilesForTag("facturacion")`)
    * `definitions/output/bronze/brz_facturacion.sqlx`
    * `definitions/output/silver/slv_facturacion.sqlx`
    * `definitions/output/gold/gld_facturacion.sqlx`
-
-¡El orquestador de Apps Script detectará automáticamente los ficheros correspondientes y solo disparará el tag `facturacion`!
+2. **Invocar desde Apps Script** enviando los ficheros en `archivos_json` y ejecutando el tag `includedTags: ["facturacion"]`. Dataform cargará la tabla externa en `bq_drive_euw1` y ejecutará todo el pipeline automáticamente.

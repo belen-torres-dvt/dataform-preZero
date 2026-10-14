@@ -11,7 +11,7 @@ js {
   const files = helpers.getFilesForTag("absentismo");
 }
 
--- Crear una tabla externa en bq_stg_euw1 para cada fichero CSV que coincide con 'absentismo'
+-- Crear una tabla externa en bq_drive_euw1 para cada fichero CSV que coincide con 'absentismo'
 ${files.map((file, idx) => `
   CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.ext_absentismo_${idx}\`
   OPTIONS (
