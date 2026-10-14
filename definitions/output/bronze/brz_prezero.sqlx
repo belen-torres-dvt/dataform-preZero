@@ -50,22 +50,6 @@ js {
   }
 }
 
-pre_operations {
-  BEGIN
-    DECLARE obj_type STRING;
-    SET obj_type = (
-      SELECT table_type 
-      FROM ${constants.SCHEMAS.BRONZE}.INFORMATION_SCHEMA.TABLES
-      WHERE table_name = '${self().name}'
-    );
-    IF obj_type = 'VIEW' THEN
-      DROP VIEW IF EXISTS ${self()};
-    END IF;
-  EXCEPTION WHEN ERROR THEN
-    NULL;
-  END;
-}
-
 ${files.length <= 1 ? selectFromExternal(ref("drive_source_prezero"), files[0]) :
   files.map((file, idx) => selectFromExternal(
     idx === 0 ? ref("drive_source_prezero") : `${constants.SCHEMAS.RAW}.ext_prezero_${idx}`,
