@@ -17,8 +17,7 @@ ${files.length > 0 ? files.map((file, idx) => `
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],
-    skip_leading_rows = 1,
-    autodetect = TRUE
+    skip_leading_rows = 1
   );
 `).join("\n") : `
   SELECT 1;
