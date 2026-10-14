@@ -20,13 +20,13 @@ function surrogateKey(columns) {
 }
 
 /**
- * Genera columnas de auditoría estándar, permitiendo conservar los metadatos de fichero por fila.
+ * Genera columnas de auditoría estándar, permitiendo conservar los metadatos de fichero por fila o inferirlos del tag.
  *
- * @param {boolean} preserveRowMetadata - Si es true, usa los campos _source_file_id y _source_file_name de la fila
+ * @param {boolean|string} tagOrPreserve - Si es true, usa los campos existentes en la fila; si es string (tag), busca el fichero asignado; de lo contrario usa vars globales.
  * @returns {string} Fragmento SQL con columnas de auditoría
  */
-function auditColumns(preserveRowMetadata = false) {
-  if (preserveRowMetadata) {
+function auditColumns(tagOrPreserve = false) {
+  if (tagOrPreserve === true) {
     return `
       CURRENT_TIMESTAMP() AS _dw_loaded_at,
       SESSION_USER() AS _dw_loaded_by,
@@ -36,8 +36,17 @@ function auditColumns(preserveRowMetadata = false) {
       _source_file_name
     `;
   }
-  const fileId = dataform.projectConfig.vars.drive_file_id || "unknown";
-  const fileName = dataform.projectConfig.vars.drive_file_name || "unknown";
+  let fileId = dataform.projectConfig.vars.drive_file_id || "";
+  let fileName = dataform.projectConfig.vars.drive_file_name || "";
+  if (typeof tagOrPreserve === "string") {
+    const tagFiles = getFilesForTag(tagOrPreserve);
+    if (tagFiles.length > 0) {
+      fileId = fileId || tagFiles[0].id;
+      fileName = fileName || tagFiles[0].name;
+    }
+  }
+  fileId = fileId || "unknown";
+  fileName = fileName || "unknown";
   return `
     CURRENT_TIMESTAMP() AS _dw_loaded_at,
     SESSION_USER() AS _dw_loaded_by,

@@ -2,37 +2,11 @@ config {
   type: "table",
   schema: constants.SCHEMAS.BRONZE,
   tags: ["prezero", "bronze"],
-  description: "Capa Bronze: Ingesta en bruto de registros de pesajes PreZero en tabla nativa BigQuery",
-  bigquery: {
-    clusterBy: ["file_name"]
-  }
+  description: "Capa Bronze: Ingesta en bruto de registros de pesajes PreZero en tabla nativa BigQuery"
 }
 
-js {
-  const files = helpers.getFilesForTag("prezero");
-
-  function selectRawFromExternal(tableRef, file) {
-    const fId = file ? file.id : "";
-    const fName = file ? file.name : "";
-    return `
-      SELECT
-        *,
-        '${fId}' AS file_id,
-        '${fName}' AS file_name,
-        '${fId}' AS _source_file_id,
-        '${fName}' AS _source_file_name,
-        CURRENT_TIMESTAMP() AS _dw_loaded_at,
-        SESSION_USER() AS _dw_loaded_by
-      FROM
-        ${tableRef}
-    `;
-  }
-}
-
-
-${files.length <= 1 ? selectRawFromExternal(ref("drive_source_prezero"), files[0]) :
-  files.map((file, idx) => selectRawFromExternal(
-    idx === 0 ? ref("drive_source_prezero") : `${constants.SCHEMAS.RAW}.ext_prezero_${idx}`,
-    file
-  )).join("\nUNION ALL\n")
-}
+SELECT
+  *,
+  ${helpers.auditColumns("prezero")}
+FROM
+  ${ref("drive_source_prezero")}

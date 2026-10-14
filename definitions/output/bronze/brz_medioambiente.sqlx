@@ -2,37 +2,11 @@ config {
   type: "table",
   schema: constants.SCHEMAS.BRONZE,
   tags: ["medioambiente", "bronze"],
-  description: "Capa Bronze: Ingesta en bruto de Soluciones Medioambientales en tabla nativa BigQuery",
-  bigquery: {
-    clusterBy: ["file_name"]
-  }
+  description: "Capa Bronze: Ingesta en bruto de Soluciones Medioambientales en tabla nativa BigQuery"
 }
 
-js {
-  const files = helpers.getFilesForTag("medioambiente");
-
-  function selectRawFromExternal(tableRef, file) {
-    const fId = file ? file.id : "";
-    const fName = file ? file.name : "";
-    return `
-      SELECT
-        *,
-        '${fId}' AS file_id,
-        '${fName}' AS file_name,
-        '${fId}' AS _source_file_id,
-        '${fName}' AS _source_file_name,
-        CURRENT_TIMESTAMP() AS _dw_loaded_at,
-        SESSION_USER() AS _dw_loaded_by
-      FROM
-        ${tableRef}
-    `;
-  }
-}
-
-
-${files.length <= 1 ? selectRawFromExternal(ref("drive_source_medioambiente"), files[0]) :
-  files.map((file, idx) => selectRawFromExternal(
-    idx === 0 ? ref("drive_source_medioambiente") : `${constants.SCHEMAS.RAW}.ext_medioambiente_${idx}`,
-    file
-  )).join("\nUNION ALL\n")
-}
+SELECT
+  *,
+  ${helpers.auditColumns("medioambiente")}
+FROM
+  ${ref("drive_source_medioambiente")}
