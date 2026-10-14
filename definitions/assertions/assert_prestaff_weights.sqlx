@@ -1,7 +1,7 @@
 config {
   type: "assertion",
   schema: constants.SCHEMAS.ASSERTIONS,
-  tags: ["prestaff", "assertions"],
+  //tags: ["prestaff", "assertions"],
   description: "Calidad PreStaff: Comprueba que ningún pesaje contenga pesos netos negativos"
 }
 

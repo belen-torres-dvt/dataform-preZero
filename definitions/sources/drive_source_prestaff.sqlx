@@ -17,7 +17,10 @@ ${files.length > 0 ? files.map((file, idx) => `
   OPTIONS (
     format = "CSV",
     uris = ["https://drive.google.com/open?id=${file.id}"],
-    skip_leading_rows = 1
+    skip_leading_rows = 1,
+    ignore_unknown_values = true,
+    allow_jagged_rows = true,
+    allow_quoted_newlines = true
   );
 `).join("\n") : `
   SELECT 1;

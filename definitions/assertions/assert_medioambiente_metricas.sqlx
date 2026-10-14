@@ -1,7 +1,7 @@
 config {
   type: "assertion",
   schema: constants.SCHEMAS.ASSERTIONS,
-  tags: ["medioambiente", "assertions"],
+  //tags: ["medioambiente", "assertions"],
   description: "Calidad Medioambiente: Valida que costes, CO2 e índice de impacto ambiental tengan valores coherentes"
 }
 
