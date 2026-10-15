@@ -4,7 +4,7 @@ config {
   schema: constants.SCHEMAS.BRONZE,
   name: "brz_medioambiente",
   dependencies: ["drive_source_medioambiente"],
-  tags: ["proceso_prestaff", "medioambiente", "bronze"],
+  tags: ["proceso_prestaff"],
   description: "Capa Bronze: Ingesta en bruto de Soluciones Medioambientales en tabla nativa BigQuery protegida ante ficheros ausentes"
 }
 

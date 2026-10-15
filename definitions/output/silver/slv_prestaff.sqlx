@@ -2,7 +2,7 @@ config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   dependencies: ["brz_prestaff"],
-  tags: ["proceso_prestaff", "prestaff", "silver"],
+  tags: ["proceso_prestaff"],
   description: "Capa Silver: Registros de PreStaff unificados por UNION ALL, tipados, deduplicados y con partición por nombre_fichero",
   bigquery: {
     clusterBy: ["nombre_fichero", "numero_personal"]

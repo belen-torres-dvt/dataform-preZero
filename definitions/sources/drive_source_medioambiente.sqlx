@@ -3,7 +3,7 @@ config {
   hasOutput: true,
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_medioambiente",
-  tags: ["proceso_prestaff", "medioambiente", "source"],
+  tags: ["proceso_prestaff"],
   description: "Tabla externa BigQuery en bq_drive_euw1 apuntando a los datos de Soluciones Medioambientales en Google Drive"
 }
 

@@ -4,7 +4,7 @@ config {
   schema: constants.SCHEMAS.BRONZE,
   name: "brz_prestaff",
   dependencies: ["drive_source_prestaff"],
-  tags: ["proceso_prestaff", "prestaff", "bronze"],
+  tags: ["proceso_prestaff"],
   description: "Capa Bronze: Tablas nativas 1:1 en BigQuery por cada fichero mensual de PreStaff con sufijo y nombre_fichero (sin transformaciones ni unions)"
 }
 

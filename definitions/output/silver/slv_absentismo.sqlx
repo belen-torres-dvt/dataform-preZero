@@ -2,7 +2,7 @@ config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   dependencies: ["brz_absentismo"],
-  tags: ["proceso_prestaff", "absentismo", "silver"],
+  tags: ["proceso_prestaff"],
   description: "Capa Silver: Bajas y ausencias de personal consolidadas, tipadas, deduplicadas y con surrogate key (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
@@ -46,7 +46,7 @@ js {
         "CAST(NULL AS STRING) AS _dw_loaded_by " +
         "WHERE FALSE";
     }
-    return "`" + dataform.projectConfig.defaultDatabase + "." + constants.SCHEMAS.BRONZE + ".brz_absentismo`";
+    return "SELECT * FROM `" + dataform.projectConfig.defaultDatabase + "." + constants.SCHEMAS.BRONZE + ".brz_absentismo`";
   }
 }
 

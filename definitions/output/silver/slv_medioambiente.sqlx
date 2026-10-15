@@ -2,7 +2,7 @@ config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
   dependencies: ["brz_medioambiente"],
-  tags: ["proceso_prestaff", "medioambiente", "silver"],
+  tags: ["proceso_prestaff"],
   description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, tipados, deduplicados y con clave subrogada (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
@@ -70,7 +70,7 @@ js {
         "CAST(NULL AS STRING) AS _dw_loaded_by " +
         "WHERE FALSE";
     }
-    return "`" + dataform.projectConfig.defaultDatabase + "." + constants.SCHEMAS.BRONZE + ".brz_medioambiente`";
+    return "SELECT * FROM `" + dataform.projectConfig.defaultDatabase + "." + constants.SCHEMAS.BRONZE + ".brz_medioambiente`";
   }
 }
 
