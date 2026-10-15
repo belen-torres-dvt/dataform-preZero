@@ -3,7 +3,7 @@ config {
   hasOutput: true,
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_absentismo",
-  tags: ["absentismo", "source"],
+  tags: ["proceso_prestaff", "absentismo", "source"],
   description: "Tabla externa BigQuery en bq_drive_euw1 apuntando a los datos de Absentismo en Google Drive"
 }
 

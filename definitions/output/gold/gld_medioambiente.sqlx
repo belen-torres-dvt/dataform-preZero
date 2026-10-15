@@ -1,7 +1,7 @@
 config {
   type: "table",
   schema: constants.SCHEMAS.GOLD,
-  tags: ["medioambiente", "gold", "bi"],
+  tags: ["proceso_prestaff", "medioambiente", "gold", "bi"],
   description: "Capa Gold: Resumen mensual analítico de impacto ambiental, inversiones y ahorros por categoría, país y sector",
   bigquery: {
     partitionBy: "mes_registro",

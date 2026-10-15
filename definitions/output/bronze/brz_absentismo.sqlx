@@ -4,7 +4,7 @@ config {
   schema: constants.SCHEMAS.BRONZE,
   name: "brz_absentismo",
   dependencies: ["drive_source_absentismo"],
-  tags: ["absentismo", "bronze"],
+  tags: ["proceso_prestaff", "absentismo", "bronze"],
   description: "Capa Bronze: Ingesta en bruto de datos de absentismo en tabla nativa BigQuery protegida ante ficheros ausentes"
 }
 
@@ -13,6 +13,17 @@ js {
 }
 
 ${files.length > 0 ? `
+  CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_absentismo\`
+  OPTIONS (
+    format = "CSV",
+    uris = ["https://drive.google.com/open?id=${files[0].id}"],
+    skip_leading_rows = 1,
+    field_delimiter = "${dataform.projectConfig.vars.field_delimiter || ";"}",
+    ignore_unknown_values = true,
+    allow_jagged_rows = true,
+    allow_quoted_newlines = true
+  );
+
   CREATE OR REPLACE TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_absentismo\` AS
   SELECT
     *,

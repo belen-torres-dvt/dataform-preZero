@@ -3,7 +3,7 @@ config {
   hasOutput: true,
   schema: constants.SCHEMAS.RAW,
   name: "drive_source_prestaff",
-  tags: ["prestaff", "source"],
+  tags: ["proceso_prestaff", "prestaff", "source"],
   description: "Tablas externas BigQuery en bq_drive_euw1 apuntando a los CSVs mensuales de PreStaff en Google Drive"
 }
 

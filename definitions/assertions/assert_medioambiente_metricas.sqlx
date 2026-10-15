@@ -1,13 +1,13 @@
 config {
   type: "assertion",
   schema: constants.SCHEMAS.ASSERTIONS,
-  //tags: ["medioambiente", "assertions"],
+  //tags: ["proceso_prestaff", "medioambiente", "assertions"],
   description: "Calidad Medioambiente: Valida que costes, CO2 e índice de impacto ambiental tengan valores coherentes"
 }
 
 SELECT
   proyecto_sk,
-  id_proyecto,
+  nombre_solucion,
   coste_implementacion_eur,
   reduccion_co2_ton_ano,
   indice_impacto_ambiental_1_10,

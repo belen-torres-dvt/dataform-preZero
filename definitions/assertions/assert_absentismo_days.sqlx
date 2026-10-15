@@ -1,7 +1,7 @@
 config {
   type: "assertion",
   schema: constants.SCHEMAS.ASSERTIONS,
-  //tags: ["absentismo", "assertions"],
+  //tags: ["proceso_prestaff", "absentismo", "assertions"],
   description: "Calidad Absentismo: Valida que los días u horas de ausencia no sean números negativos"
 }
 

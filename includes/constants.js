@@ -32,6 +32,7 @@ const STATUS = {
 };
 
 const TAGS = {
+  PROCESO_PRESTAFF: "proceso_prestaff",
   PRESTAFF: "prestaff",
   ABSENTISMO: "absentismo",
   MEDIOAMBIENTE: "medioambiente"

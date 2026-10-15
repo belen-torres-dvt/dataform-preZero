@@ -4,7 +4,7 @@ config {
   schema: constants.SCHEMAS.BRONZE,
   name: "brz_prestaff",
   dependencies: ["drive_source_prestaff"],
-  tags: ["prestaff", "bronze"],
+  tags: ["proceso_prestaff", "prestaff", "bronze"],
   description: "Capa Bronze: Tablas nativas 1:1 en BigQuery por cada fichero mensual de PreStaff con sufijo y nombre_fichero (sin transformaciones ni unions)"
 }
 
@@ -18,6 +18,17 @@ ${files.length > 0 ? files.map((file, idx) => {
   const extTable = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_prestaff_${suffix}\``;
   const brzTable = `\`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_prestaff_${suffix}\``;
   return `
+    CREATE OR REPLACE EXTERNAL TABLE ${extTable}
+    OPTIONS (
+      format = "CSV",
+      uris = ["https://drive.google.com/open?id=${file.id}"],
+      skip_leading_rows = 1,
+      field_delimiter = "${dataform.projectConfig.vars.field_delimiter || ";"}",
+      ignore_unknown_values = true,
+      allow_jagged_rows = true,
+      allow_quoted_newlines = true
+    );
+
     CREATE OR REPLACE TABLE ${brzTable} AS
     SELECT
       *,

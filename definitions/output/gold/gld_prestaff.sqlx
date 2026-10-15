@@ -1,7 +1,7 @@
 config {
   type: "table",
   schema: constants.SCHEMAS.GOLD,
-  tags: ["prestaff", "gold", "bi"],
+  tags: ["proceso_prestaff", "prestaff", "gold", "bi"],
   description: "Capa Gold: Resumen analítico mensual de plantilla y FTEs por división y categoría profesional PreStaff",
   bigquery: {
     clusterBy: ["division", "categoria_profesional"]

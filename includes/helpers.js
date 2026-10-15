@@ -94,7 +94,11 @@ function getFilesForTag(targetTag) {
                     dataform.projectConfig.vars.tag ||
                     dataform.projectConfig.vars.tags ||
                     "";
-  if (activeTag && activeTag !== targetTag) {
+  const isMasterRun = !activeTag ||
+                      activeTag === "proceso_prestaff" ||
+                      activeTag === "all" ||
+                      activeTag === "default";
+  if (activeTag && !isMasterRun && activeTag !== targetTag) {
     return [];
   }
 

@@ -1,12 +1,35 @@
 config {
-  type: "table",
+  type: "operations",
+  hasOutput: true,
   schema: constants.SCHEMAS.BRONZE,
-  tags: ["medioambiente", "bronze"],
-  description: "Capa Bronze: Ingesta en bruto de Soluciones Medioambientales en tabla nativa BigQuery"
+  name: "brz_medioambiente",
+  dependencies: ["drive_source_medioambiente"],
+  tags: ["proceso_prestaff", "medioambiente", "bronze"],
+  description: "Capa Bronze: Ingesta en bruto de Soluciones Medioambientales en tabla nativa BigQuery protegida ante ficheros ausentes"
 }
 
-SELECT
-  *,
-  ${helpers.auditColumns("medioambiente")}
-FROM
-  ${ref("drive_source_medioambiente")}
+js {
+  const files = helpers.getFilesForTag("medioambiente");
+}
+
+${files.length > 0 ? `
+  CREATE OR REPLACE EXTERNAL TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_medioambiente\`
+  OPTIONS (
+    format = "CSV",
+    uris = ["https://drive.google.com/open?id=${files[0].id}"],
+    skip_leading_rows = 1,
+    field_delimiter = "${dataform.projectConfig.vars.field_delimiter || ";"}",
+    ignore_unknown_values = true,
+    allow_jagged_rows = true,
+    allow_quoted_newlines = true
+  );
+
+  CREATE OR REPLACE TABLE \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.BRONZE}.brz_medioambiente\` AS
+  SELECT
+    *,
+    ${helpers.auditColumns("medioambiente")}
+  FROM
+    \`${dataform.projectConfig.defaultDatabase}.${constants.SCHEMAS.RAW}.drive_source_medioambiente\`;
+` : `
+  SELECT 1;
+`}

@@ -1,7 +1,8 @@
 config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
-  tags: ["absentismo", "silver"],
+  dependencies: ["brz_absentismo"],
+  tags: ["proceso_prestaff", "absentismo", "silver"],
   description: "Capa Silver: Bajas y ausencias de personal consolidadas, tipadas, deduplicadas y con surrogate key (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
@@ -24,6 +25,30 @@ config {
   }
 }
 
+js {
+  const files = helpers.getFilesForTag("absentismo");
+
+  function getAbsentismoSource() {
+    if (files.length === 0) {
+      return "SELECT " +
+        "CAST(NULL AS STRING) AS id_empleado, " +
+        "CAST(NULL AS STRING) AS departamento, " +
+        "CAST(NULL AS STRING) AS motivo_baja, " +
+        "CAST(NULL AS NUMERIC) AS dias_ausencia, " +
+        "CAST(NULL AS NUMERIC) AS horas_ausencia, " +
+        "CAST(NULL AS DATE) AS fecha_inicio, " +
+        "CAST(NULL AS DATE) AS fecha_fin, " +
+        "CAST(NULL AS STRING) AS file_id, " +
+        "CAST(NULL AS STRING) AS file_name, " +
+        "CAST(NULL AS STRING) AS _source_file_id, " +
+        "CAST(NULL AS STRING) AS _source_file_name, " +
+        "CAST(NULL AS TIMESTAMP) AS _dw_loaded_at, " +
+        "CAST(NULL AS STRING) AS _dw_loaded_by " +
+        "WHERE FALSE";
+    }
+    return "`" + dataform.projectConfig.defaultDatabase + "." + constants.SCHEMAS.BRONZE + ".brz_absentismo`";
+  }
+}
 
 SELECT
   ${helpers.surrogateKey(["id_empleado", "fecha_inicio", "motivo_baja"])} AS absentismo_sk,
@@ -41,7 +66,7 @@ SELECT
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
-  ${ref("brz_absentismo")}
+  (${getAbsentismoSource()})
 WHERE
   ${helpers.cleanString("id_empleado")} IS NOT NULL
   ${when(incremental() && helpers.hasFilesForTag("absentismo"), `AND file_name IN (${helpers.getFileNamesSqlList("absentismo")})`)}

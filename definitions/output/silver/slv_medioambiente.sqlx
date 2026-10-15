@@ -1,14 +1,14 @@
 config {
   type: "incremental",
   schema: constants.SCHEMAS.SILVER,
-  tags: ["medioambiente", "silver"],
+  dependencies: ["brz_medioambiente"],
+  tags: ["proceso_prestaff", "medioambiente", "silver"],
   description: "Capa Silver: Proyectos de soluciones medioambientales consolidados, tipados, deduplicados y con clave subrogada (Histórico)",
   bigquery: {
     clusterBy: ["file_name"]
   },
   columns: {
-    proyecto_sk: "Surrogate Key determinista SHA256 (id_proyecto)",
-    id_proyecto: "Identificador del proyecto medioambiental",
+    proyecto_sk: "Surrogate Key determinista SHA256 (nombre_solucion + fecha_registro + empresa_proveedora + pais)",
     fecha_registro: "Fecha de registro del proyecto",
     nombre_solucion: "Título o descripción de la solución",
     categoria_solucion: "Categoría de la solución implementada",
@@ -37,10 +37,45 @@ config {
   }
 }
 
+js {
+  const files = helpers.getFilesForTag("medioambiente");
+
+  function getMedioambienteSource() {
+    if (files.length === 0) {
+      return "SELECT " +
+        "CAST(NULL AS DATE) AS fecha_registro, " +
+        "CAST(NULL AS STRING) AS nombre_solucion, " +
+        "CAST(NULL AS STRING) AS categoria_solucion, " +
+        "CAST(NULL AS STRING) AS pais, " +
+        "CAST(NULL AS STRING) AS region_geografica, " +
+        "CAST(NULL AS STRING) AS empresa_proveedora, " +
+        "CAST(NULL AS STRING) AS sector_cliente, " +
+        "CAST(NULL AS NUMERIC) AS coste_implementacion_eur, " +
+        "CAST(NULL AS NUMERIC) AS ahorro_anual_estimado_eur, " +
+        "CAST(NULL AS NUMERIC) AS reduccion_co2_ton_ano, " +
+        "CAST(NULL AS NUMERIC) AS volumen_agua_reciclada_m3, " +
+        "CAST(NULL AS NUMERIC) AS energia_renovable_generada_mwh, " +
+        "CAST(NULL AS NUMERIC) AS residuos_desviados_vertedero_ton, " +
+        "CAST(NULL AS STRING) AS estado_proyecto, " +
+        "CAST(NULL AS STRING) AS certificacion_ambiental, " +
+        "CAST(NULL AS NUMERIC) AS huella_carbono_inicial_ton, " +
+        "CAST(NULL AS NUMERIC) AS roi_estimado_anos, " +
+        "CAST(NULL AS NUMERIC) AS subvencion_publica_porc, " +
+        "CAST(NULL AS NUMERIC) AS indice_impacto_ambiental_1_10, " +
+        "CAST(NULL AS STRING) AS file_id, " +
+        "CAST(NULL AS STRING) AS file_name, " +
+        "CAST(NULL AS STRING) AS _source_file_id, " +
+        "CAST(NULL AS STRING) AS _source_file_name, " +
+        "CAST(NULL AS TIMESTAMP) AS _dw_loaded_at, " +
+        "CAST(NULL AS STRING) AS _dw_loaded_by " +
+        "WHERE FALSE";
+    }
+    return "`" + dataform.projectConfig.defaultDatabase + "." + constants.SCHEMAS.BRONZE + ".brz_medioambiente`";
+  }
+}
 
 SELECT
-  ${helpers.surrogateKey(["id_proyecto"])} AS proyecto_sk,
-  ${helpers.cleanString("id_proyecto")} AS id_proyecto,
+  ${helpers.surrogateKey(["nombre_solucion", "fecha_registro", "empresa_proveedora", "pais"])} AS proyecto_sk,
   SAFE_CAST(fecha_registro AS DATE) AS fecha_registro,
   ${helpers.cleanString("nombre_solucion")} AS nombre_solucion,
   UPPER(${helpers.cleanString("categoria_solucion")}) AS categoria_solucion,
@@ -67,12 +102,12 @@ SELECT
   CURRENT_TIMESTAMP() AS _dw_loaded_at,
   SESSION_USER() AS _dw_loaded_by
 FROM
-  ${ref("brz_medioambiente")}
+  (${getMedioambienteSource()})
 WHERE
-  ${helpers.cleanString("id_proyecto")} IS NOT NULL
+  ${helpers.cleanString("nombre_solucion")} IS NOT NULL
   ${when(incremental() && helpers.hasFilesForTag("medioambiente"), `AND file_name IN (${helpers.getFileNamesSqlList("medioambiente")})`)}
   ${when(incremental() && !helpers.hasFilesForTag("medioambiente"), `AND FALSE`)}
 QUALIFY ROW_NUMBER() OVER (
-  PARTITION BY id_proyecto
-  ORDER BY fecha_registro DESC, _dw_loaded_at DESC
+  PARTITION BY nombre_solucion, fecha_registro, empresa_proveedora, pais
+  ORDER BY _dw_loaded_at DESC
 ) = 1
